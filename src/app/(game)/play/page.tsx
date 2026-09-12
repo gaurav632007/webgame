@@ -1,26 +1,31 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar } from '@/components/ui';
+import type { Player } from '@/types/game';
 
-const patternSvg = `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23f97316' fillOpacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E`;
+// NOTE: never select the `secret` column directly — it is revoked for anon
+// clients. Civilians receive it via POST /api/game/me (get_my_view RPC).
+const GAME_STATE_COLUMNS =
+  'id,room_id,phase,round,imposter_ids,current_turn,timer_ends_at,votes,clues,winner,created_at,updated_at';
+
+const patternSvg = `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23f97316' fillOpacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4h-4zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E`;
 
 type Role = 'civilian' | 'imposter' | 'spectator';
 
 interface GameStateRow {
   phase: string;
   round: number;
-  secret: string | null;
   imposter_ids: string[];
   current_turn: string | null;
   timer_ends_at: string | null;
   votes: Record<string, string>;
   clues: Record<string, string>;
   room_code?: string;
-  winner?: string;
+  winner?: string | null;
 }
 
 function PlayContent() {
@@ -30,10 +35,42 @@ function PlayContent() {
   const playerId = searchParams.get('player');
 
   const [gameState, setGameState] = useState<GameStateRow | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [isHost, setIsHost] = useState(false);
   const [myRole, setMyRole] = useState<Role>('spectator');
   const [secret, setSecret] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  const fetchMyView = useCallback(async () => {
+    if (!roomId || !playerId) return;
+    try {
+      const res = await fetch('/api/game/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { role: Role | null; secret: string | null };
+      if (data.role) setMyRole(data.role);
+      setSecret(data.secret);
+    } catch (err) {
+      console.error('Fetch my view error:', err);
+    }
+  }, [roomId, playerId]);
+
+  const fetchPlayers = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const { data } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
+      const list = (data ?? []) as unknown as Player[];
+      setPlayers(list);
+      const me = list.find((p) => p.id === playerId);
+      if (me) setIsHost(me.is_host);
+    } catch (err) {
+      console.error('Fetch players error:', err);
+    }
+  }, [roomId, playerId, supabase]);
 
   useEffect(() => {
     if (!roomId || !playerId) {
@@ -42,44 +79,64 @@ function PlayContent() {
     }
     const fetchGameState = async () => {
       try {
-        const { data } = await supabase.from('game_state').select('*').eq('room_id', roomId).single();
+        const { data } = await supabase.from('game_state').select(GAME_STATE_COLUMNS).eq('room_id', roomId).single();
         const gs = data as unknown as GameStateRow | null;
         if (gs) setGameState(gs);
-        const { data: player } = await supabase.from('players').select('role').eq('id', playerId).single();
-        const prow = player as unknown as { role: Role } | null;
-        if (prow) {
-          setMyRole(prow.role);
-          if (prow.role === 'civilian' && gs?.secret) setSecret(gs.secret);
-        }
       } catch (err) {
         console.error('Fetch game state error:', err);
       }
     };
     fetchGameState();
+    // Initial fetch on mount + realtime subscription below; cascading render is intended here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchMyView();
+    fetchPlayers();
+
     const channel = supabase
       .channel(`game:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_state', filter: `room_id=eq.${roomId}` }, (payload) => {
         const next = payload.new as unknown as GameStateRow;
         if (next) {
           setGameState(next);
-          setMyRole((prev) => {
-            if (prev === 'civilian' && next.secret) setSecret(next.secret);
-            return prev;
-          });
-          if (next.phase === 'result') {
-            setTimeout(() => router.push(`/results?room=${roomId}&player=${playerId}`), 5000);
+          if (next.phase === 'game_over') {
+            router.push(`/results?room=${roomId}&player=${playerId}`);
           }
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `id=eq.${playerId}` }, (payload) => {
-        const prow = payload.new as unknown as { role?: Role } | null;
-        if (prow?.role) setMyRole(prow.role);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
+        fetchPlayers();
+        fetchMyView();
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, playerId, router, supabase]);
+  }, [roomId, playerId, router, supabase, fetchMyView, fetchPlayers]);
+
+  // Host drives the phase machine: when the timer lapses, advance.
+  useEffect(() => {
+    if (!isHost || !gameState?.timer_ends_at || !roomId || !playerId) return;
+    const msLeft = new Date(gameState.timer_ends_at).getTime() - Date.now();
+    if (msLeft <= 0) {
+      fetch('/api/game/advance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId }),
+      }).catch((err) => console.error('Advance error:', err));
+      return;
+    }
+    const t = setTimeout(
+      () => {
+        fetch('/api/game/advance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId, playerId }),
+        }).catch((err) => console.error('Advance error:', err));
+      },
+      msLeft + 750,
+    );
+    return () => clearTimeout(t);
+  }, [isHost, gameState?.timer_ends_at, gameState?.phase, roomId, playerId]);
 
   if (!gameState) {
     return (
@@ -91,6 +148,8 @@ function PlayContent() {
       </div>
     );
   }
+
+  const imposters = players.filter((p) => gameState.imposter_ids.includes(p.id));
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -105,8 +164,9 @@ function PlayContent() {
           {gameState.phase === 'role_reveal' && <RoleRevealScreen myRole={myRole} secret={secret} />}
           {gameState.phase === 'clue' && <ClueScreen myRole={myRole} secret={secret} currentTurn={gameState.current_turn} playerId={playerId ?? ''} clues={gameState.clues || {}} />}
           {gameState.phase === 'discussion' && <DiscussionScreen />}
-          {gameState.phase === 'voting' && <VotingScreen playerId={playerId ?? ''} players={[]} votes={gameState.votes || {}} />}
-          {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} />}
+          {gameState.phase === 'voting' && <VotingScreen playerId={playerId ?? ''} players={players} votes={gameState.votes || {}} />}
+          {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} />}
+          {gameState.phase === 'game_over' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} final />}
         </div>
       </main>
     </div>
@@ -212,7 +272,7 @@ function DiscussionScreen() {
   );
 }
 
-function VotingScreen({ playerId, players, votes }: { playerId: string; players: Array<{ id: string; avatar_id: number; nickname: string }>; votes: Record<string, string> }) {
+function VotingScreen({ playerId, players, votes }: { playerId: string; players: Player[]; votes: Record<string, string> }) {
   const hasVoted = !!votes[playerId];
   return (
     <Card className="card-elevated">
@@ -220,8 +280,8 @@ function VotingScreen({ playerId, players, votes }: { playerId: string; players:
         <h3 className="font-display text-2xl font-bold text-gray-900 mb-2">WHO IS THE IMPOSTER?</h3>
         <p className="text-gray-600 mb-6">Tap to vote</p>
         <div className="grid grid-cols-2 gap-4">
-          {players.map((p) => (
-            <button key={p.id} disabled={hasVoted || p.id === playerId}
+          {players.filter((p) => p.id !== playerId).map((p) => (
+            <button key={p.id} disabled={hasVoted}
               className={`p-4 rounded-xl border-2 transition-all ${votes[playerId] === p.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
               <Avatar avatarId={p.avatar_id} size="lg" nickname={p.nickname} />
               <p className="mt-2 font-medium text-gray-900">{p.nickname}</p>
@@ -235,11 +295,22 @@ function VotingScreen({ playerId, players, votes }: { playerId: string; players:
   );
 }
 
-function ResultScreen({ winner }: { winner: string }) {
+function ResultScreen({ winner, imposters, round, final }: { winner: string; imposters: Player[]; round: number; final?: boolean }) {
+  const civiliansWon = winner === 'civilians';
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-      <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">{winner === 'civilians' ? 'IMPOSTER CAUGHT!' : 'IMPOSTER ESCAPED!'}</h2>
-      <p className="text-gray-600">{winner === 'civilians' ? 'Civilians win!' : 'Imposter wins!'}</p>
+      <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">{civiliansWon ? 'IMPOSTER CAUGHT!' : 'IMPOSTER ESCAPED!'}</h2>
+      <p className="text-gray-600 mb-6">{civiliansWon ? 'Civilians win this round!' : 'Imposter wins this round!'} (Round {round}{final ? ', final' : ''})</p>
+      {imposters.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-4">
+          {imposters.map((p) => (
+            <div key={p.id} className="text-center">
+              <Avatar avatarId={p.avatar_id} size="xl" nickname={p.nickname} role="imposter" />
+              <p className="mt-2 font-medium text-gray-900">{p.nickname}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -148,7 +148,7 @@ export const PHASE_TIMERS: Record<GamePhase, number> = {
   clue: 30,
   discussion: 60,
   voting: 20,
-  result: 5,
+  result: 8,
   game_over: 0,
 };
 

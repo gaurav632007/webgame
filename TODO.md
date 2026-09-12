@@ -106,18 +106,21 @@
 
 ## 🟪 PHASE 5 — GAME ENGINE
 
-- [ ] Define game state machine (LOBBY → ROLE_REVEAL → CLUE → DISCUSSION → VOTING → RESULT → GAME_OVER)
-- [ ] Define player state
-- [ ] Define round state
-- [ ] Implement role assignment (server-side)
-- [ ] Implement secret selection from topics
-- [ ] Implement Imposter selection (1 for 4-7, 2 for 8+)
-- [ ] Implement synchronized timers
-- [ ] Implement phase transitions
-- [ ] Server validation for all actions
-- [ ] RLS: Imposter never receives secret
-- [ ] Git commit
-- [ ] Git push
+- [x] Define game state machine (role_reveal → clue → discussion → voting → result → next round / game_over)
+- [x] Define player state (types/game.ts)
+- [x] Define round state (round, current_round, rounds)
+- [x] Implement role assignment server-side (start_game RPC, fixed NULL-safe)
+- [x] Implement secret selection from topics (pick_secret + 104 starter seeds)
+- [x] Implement Imposter selection (1 for 4-7, 2 for 8+)
+- [x] Implement synchronized timers (timer_ends_at per phase; host auto-advances)
+- [x] Implement phase transitions (advance_phase RPC + /api/game/advance)
+- [x] Vote tally + winner computation (strict-majority imposter vote wins civilians)
+- [x] Server validation for all actions (service-role admin client in every API route)
+- [x] RLS: Imposter never receives secret (column REVOKE + get_my_view RPC + /api/game/me)
+- [x] Fixed rooms.host_id mismatch (now equals host players.id; start validates it)
+- [x] Lint clean + production build green (16 routes)
+- [x] Git commit
+- [x] Git push
 
 ## 🟫 PHASE 6 — CLUES
 

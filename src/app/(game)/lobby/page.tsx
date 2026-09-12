@@ -202,7 +202,7 @@ function LobbyContent() {
       const response = await fetch('/api/game/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId }),
+        body: JSON.stringify({ roomId, hostPlayerId: playerId }),
       });
       if (!response.ok) {
         const data = await response.json();

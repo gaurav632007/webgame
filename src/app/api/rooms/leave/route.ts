@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -9,7 +9,7 @@ const leaveSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const { roomId, playerId } = leaveSchema.parse(body);
 

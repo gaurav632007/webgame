@@ -168,11 +168,12 @@ REMATCH / NEW ROOM
 
 ## 🔐 Security
 
-- **Server-authoritative**: Secret word never sent to Imposter's client
-- **RLS Policies**: Row Level Security on all tables
+- **Server-authoritative**: Secret word never sent to Imposter's client (column-level REVOKE + `get_my_view` RPC)
+- **RLS Policies**: Row Level Security on all tables (TEMP open gameplay policies until auth lands in Phase 18/19)
+- **Service-role API routes**: All mutations validated server-side via `src/lib/supabase/admin.ts`
 - **Input validation**: Zod schemas on all API routes
-- **Rate limiting**: On mutating endpoints
-- **No secrets in frontend**: All sensitive ops via Edge Functions
+- **Rate limiting**: On mutating endpoints (planned)
+- **No secrets in frontend**: Service key lives server-side only
 
 ## 📱 Mobile Support
 
