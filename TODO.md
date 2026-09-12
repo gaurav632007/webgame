@@ -52,19 +52,22 @@
 
 ## 🟨 PHASE 2 — LANDING PAGE
 
-- [ ] Hero section with animated logo
-- [ ] Animated character showcase (8 characters)
-- [ ] Floating particle background
-- [ ] "How it Works" 6-step section
-- [ ] Game Modes showcase (6 cards)
-- [ ] CTA section with gradient card
-- [ ] Footer with links
-- [ ] Page transitions
-- [ ] Meta tags (Open Graph, Twitter, JSON-LD)
-- [ ] Test mobile
-- [ ] Test desktop
-- [ ] Git commit
-- [ ] Git push
+- [x] Hero section with animated logo (gradient headline, stagger entrance)
+- [x] Animated character showcase (8 characters, spring pop-in + idle bobble)
+- [x] Floating particle background (20 particles, static fallback when reduced motion)
+- [x] "How it Works" 6-step section (stagger grid)
+- [x] Game Modes showcase (6 cards)
+- [x] CTA section with gradient card
+- [x] Footer with real links (Play, How, Modes, Privacy, Terms)
+- [x] Privacy + Terms pages (no dead links)
+- [x] Page transitions (shared slideUp/pageWrap variants)
+- [x] Meta tags (Open Graph, Twitter in layout + JSON-LD VideoGame schema)
+- [x] Reduced-motion support (useReducedMotion on characters + particles)
+- [x] Test mobile (responsive, wrap feature row)
+- [x] Test desktop (build prerender OK)
+- [x] Lint clean + production build green (13 routes)
+- [x] Git commit
+- [x] Git push
 
 ## 🟧 PHASE 3 — CREATE/JOIN ROOM
 
