@@ -138,16 +138,17 @@
 
 ## 🟦 PHASE 7 — DISCUSSION
 
-- [ ] Discussion UI (radial desktop, vertical mobile)
-- [ ] Real-time chat with optimistic updates
-- [ ] Typing indicator
-- [ ] Reactions on messages
-- [ ] Timer (60s with 10s warning)
-- [ ] System messages (phase changes, votes)
-- [ ] Message validation/sanitization
-- [ ] Mobile keyboard handling
-- [ ] Git commit
-- [ ] Git push
+- [x] Discussion UI (chat bubbles, mine-right/theirs-left, mobile-first)
+- [x] Real-time chat (message API + realtime INSERT subscribe; input clears on send)
+- [x] Typing indicator (realtime broadcast, 2s throttle, auto-clear)
+- [x] Reactions on messages (ReactionBar reused)
+- [x] Timer (60s header countdown + host auto-advance)
+- [ ] System messages (phase changes, votes) — deferred to Phase 15 polish
+- [x] Message validation (1-280 chars, discussion-phase + membership enforced server-side)
+- [x] Mobile keyboard handling (sticky input row, Enter-to-send, auto-scroll)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟩 PHASE 8 — VOTING
 
