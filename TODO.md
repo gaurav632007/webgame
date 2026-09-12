@@ -152,16 +152,17 @@
 
 ## 🟩 PHASE 8 — VOTING
 
-- [ ] Voting UI with player cards
-- [ ] Player selection with animation
-- [ ] Vote confirmation modal
-- [ ] Vote validation (server-side)
-- [ ] Vote timer (20s)
-- [ ] Waiting state with live count
-- [ ] Vote counting and result broadcast
-- [ ] Tie handling
-- [ ] Git commit
-- [ ] Git push
+- [x] Voting UI with player cards (self excluded)
+- [x] Player selection with animation (tap highlight + confirm modal)
+- [x] Vote confirmation modal (locked-in warning)
+- [x] Vote validation server-side (phase, membership, no self-vote, no double vote)
+- [x] Vote timer (20s header + host auto-advance; instant advance when all voted)
+- [x] Waiting state with live count (targets stay hidden until reveal)
+- [x] Vote counting and result broadcast (advance_phase tally → result phase)
+- [x] Tie handling (ties go to the Imposter; only strict-majority catches win)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟨 PHASE 9 — REVEAL
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar } from '@/components/ui';
+import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar, Modal } from '@/components/ui';
 import { ReactionBar } from '@/components/game/ReactionBar';
 import type { Player } from '@/types/game';
 
@@ -177,7 +177,9 @@ function PlayContent() {
           {gameState.phase === 'discussion' && (
             <DiscussionScreen roomId={roomId ?? ''} playerId={playerId ?? ''} players={players} />
           )}
-          {gameState.phase === 'voting' && <VotingScreen playerId={playerId ?? ''} players={players} votes={gameState.votes || {}} />}
+          {gameState.phase === 'voting' && (
+            <VotingScreen playerId={playerId ?? ''} roomId={roomId ?? ''} players={players} votes={gameState.votes || {}} />
+          )}
           {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} />}
           {gameState.phase === 'game_over' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} final />}
         </div>
@@ -487,24 +489,89 @@ function DiscussionScreen({ roomId, playerId, players }: { roomId: string; playe
   );
 }
 
-function VotingScreen({ playerId, players, votes }: { playerId: string; players: Player[]; votes: Record<string, string> }) {
+function VotingScreen({
+  playerId, roomId, players, votes,
+}: {
+  playerId: string; roomId: string; players: Player[]; votes: Record<string, string>;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voteError, setVoteError] = useState<string | null>(null);
   const hasVoted = !!votes[playerId];
+  const votesIn = Object.keys(votes).length;
+  const candidates = players.filter((p) => p.id !== playerId);
+  const selectedPlayer = candidates.find((p) => p.id === selected);
+
+  const submitVote = async () => {
+    if (!selected || hasVoted || isSubmitting) return;
+    setIsSubmitting(true);
+    setVoteError(null);
+    try {
+      const res = await fetch('/api/game/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, voterId: playerId, targetId: selected }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit vote');
+      setConfirming(false);
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : 'Failed to submit vote');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Card className="card-elevated">
       <CardContent className="p-6 text-center">
         <h3 className="font-display text-2xl font-bold text-gray-900 mb-2">WHO IS THE IMPOSTER?</h3>
-        <p className="text-gray-600 mb-6">Tap to vote</p>
+        <p className="text-gray-600 mb-1">Tap a player, then confirm. Votes are locked in.</p>
+        <p className="text-sm text-gray-500 mb-6" aria-live="polite">{votesIn}/{players.length} votes in</p>
         <div className="grid grid-cols-2 gap-4">
-          {players.filter((p) => p.id !== playerId).map((p) => (
-            <button key={p.id} disabled={hasVoted}
-              className={`p-4 rounded-xl border-2 transition-all ${votes[playerId] === p.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
-              <Avatar avatarId={p.avatar_id} size="lg" nickname={p.nickname} />
-              <p className="mt-2 font-medium text-gray-900">{p.nickname}</p>
-              {votes[playerId] === p.id && <span className="text-sm text-orange-600 font-medium">VOTED</span>}
-            </button>
-          ))}
+          {candidates.map((p) => {
+            const isMine = votes[playerId] === p.id;
+            const isSelected = selected === p.id;
+            return (
+              <motion.button
+                key={p.id}
+                whileTap={hasVoted ? undefined : { scale: 0.96 }}
+                onClick={() => {
+                  if (hasVoted) return;
+                  setSelected(p.id);
+                  setConfirming(true);
+                }}
+                disabled={hasVoted}
+                aria-label={`Vote for ${p.nickname}`}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  isMine
+                    ? 'border-orange-500 bg-orange-50'
+                    : isSelected
+                      ? 'border-purple-400 bg-purple-50'
+                      : 'border-gray-200 hover:border-orange-300'
+                } ${hasVoted && !isMine ? 'opacity-60' : ''}`}
+              >
+                <Avatar avatarId={p.avatar_id} size="lg" nickname={p.nickname} />
+                <p className="mt-2 font-medium text-gray-900">{p.nickname}</p>
+                {isMine && <span className="text-sm text-orange-600 font-semibold">YOUR VOTE</span>}
+              </motion.button>
+            );
+          })}
         </div>
-        {hasVoted && <p className="mt-6 text-gray-500">Waiting for other players...</p>}
+        {voteError && <p className="mt-4 text-sm text-red-600">{voteError}</p>}
+        {hasVoted && <p className="mt-6 text-gray-500">Vote locked. Waiting for other players...</p>}
+
+        <Modal isOpen={confirming && !hasVoted} onClose={() => setConfirming(false)} title="Confirm your vote" size="sm">
+          <p className="text-gray-600 mb-2">
+            Vote for <span className="font-bold text-gray-900">{selectedPlayer?.nickname}</span> as the Imposter?
+          </p>
+          <p className="text-sm text-gray-500 mb-6">You cannot change your vote afterwards.</p>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={() => setConfirming(false)} disabled={isSubmitting}>Back</Button>
+            <Button className="flex-1" onClick={submitVote} loading={isSubmitting}>VOTE</Button>
+          </div>
+        </Modal>
       </CardContent>
     </Card>
   );
