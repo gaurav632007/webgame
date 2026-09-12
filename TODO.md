@@ -71,18 +71,21 @@
 
 ## 🟧 PHASE 3 — CREATE/JOIN ROOM
 
-- [ ] Create Room UI with all settings
-- [ ] Nickname validation (1-30 chars, unique per room)
-- [ ] Room code generation (6 chars, collision-resistant)
-- [ ] Room code validation on Join
-- [ ] Player limit enforcement
-- [ ] Error states (room not found, full, started, duplicate name)
-- [ ] Loading states
-- [ ] Copy room code with animation
-- [ ] Share via Web Share API / clipboard
-- [ ] WhatsApp/Telegram deep links
-- [ ] Git commit
-- [ ] Git push
+- [x] Create Room UI with all settings
+- [x] Nickname validation (1-30 chars + counter + blank check; uniqueness enforced server-side)
+- [x] Room code generation (6 chars, collision-resistant RPC)
+- [x] Room code validation on Join (normalize + 6-char check before fetch)
+- [x] Player limit enforcement (RPC + disabled join)
+- [x] Error states (not found / started / full / duplicate / offline, distinct screens)
+- [x] Loading states (room lookup spinner, button loading)
+- [x] Host goes straight to lobby (fixed double-join bug; create returns hostPlayerId)
+- [x] Join returns real roomId (fixed wrong-id bug; RPC now returns room_id + fallback lookup)
+- [x] Fixed undeclared v_player_id in join_room SQL
+- [x] Share via Web Share API / clipboard (join page room card)
+- [x] WhatsApp/Telegram deep links (join page room card)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟥 PHASE 4 — LOBBY
 

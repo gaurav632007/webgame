@@ -36,14 +36,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to join room' }, { status: 500 });
     }
 
-    const joinResult = result[0];
-    
+    const joinResult = result[0] as { success: boolean; error: string | null; player_id: string; room_id?: string };
+
     if (!joinResult.success) {
       return NextResponse.json({ error: joinResult.error }, { status: 400 });
     }
 
+    // Prefer the room_id from join_room; fall back to a lookup for older deployments.
+    let resolvedRoomId = joinResult.room_id;
+    if (!resolvedRoomId) {
+      const { data: roomRow, error: roomError } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('code', data.code)
+        .single();
+
+      if (roomError || !roomRow) {
+        console.error('Room lookup after join failed:', roomError);
+        return NextResponse.json({ error: 'Joined but room could not be found' }, { status: 500 });
+      }
+      resolvedRoomId = (roomRow as { id: string }).id;
+    }
+
     return NextResponse.json({
-      roomId: joinResult.player_id, // This is actually the player ID, we need room ID
+      roomId: resolvedRoomId,
       playerId: joinResult.player_id,
       code: data.code,
     });

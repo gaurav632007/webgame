@@ -301,9 +301,10 @@ CREATE OR REPLACE FUNCTION join_room(
   p_nickname VARCHAR(30),
   p_avatar_id INTEGER
 )
-RETURNS TABLE (success BOOLEAN, error TEXT, player_id UUID) AS $$
+RETURNS TABLE (success BOOLEAN, error TEXT, player_id UUID, room_id UUID) AS $$
 DECLARE
   v_room_id UUID;
+  v_player_id UUID;
   v_player_count INTEGER;
   v_room_status VARCHAR(20);
   v_max_players INTEGER;
@@ -311,37 +312,37 @@ BEGIN
   -- Check room exists and get details
   SELECT id, status, max_players INTO v_room_id, v_room_status, v_max_players
   FROM rooms WHERE code = p_room_code;
-  
+
   IF v_room_id IS NULL THEN
-    RETURN QUERY SELECT false, 'Room not found', NULL::UUID;
+    RETURN QUERY SELECT false, 'Room not found', NULL::UUID, NULL::UUID;
     RETURN;
   END IF;
-  
+
   IF v_room_status != 'waiting' THEN
-    RETURN QUERY SELECT false, 'Game already started', NULL::UUID;
+    RETURN QUERY SELECT false, 'Game already started', NULL::UUID, v_room_id;
     RETURN;
   END IF;
-  
+
   -- Check player count
   SELECT COUNT(*) INTO v_player_count FROM players WHERE room_id = v_room_id;
-  
+
   IF v_player_count >= v_max_players THEN
-    RETURN QUERY SELECT false, 'Room is full', NULL::UUID;
+    RETURN QUERY SELECT false, 'Room is full', NULL::UUID, v_room_id;
     RETURN;
   END IF;
-  
+
   -- Check nickname uniqueness
   IF EXISTS (SELECT 1 FROM players WHERE room_id = v_room_id AND nickname = p_nickname) THEN
-    RETURN QUERY SELECT false, 'Nickname already taken', NULL::UUID;
+    RETURN QUERY SELECT false, 'Nickname already taken', NULL::UUID, v_room_id;
     RETURN;
   END IF;
-  
+
   -- Insert player
   INSERT INTO players (room_id, nickname, avatar_id, is_host)
   VALUES (v_room_id, p_nickname, p_avatar_id, false)
   RETURNING id INTO v_player_id;
-  
-  RETURN QUERY SELECT true, NULL, v_player_id;
+
+  RETURN QUERY SELECT true, NULL::TEXT, v_player_id, v_room_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
