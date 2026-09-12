@@ -24,6 +24,9 @@ ALTER TABLE word_pairs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can view pairs" ON word_pairs;
 CREATE POLICY "Anyone can view pairs" ON word_pairs FOR SELECT USING (true);
 
+-- Reseed pairs (safe to re-run this file; admin-owned pairs arrive in Phase 17).
+DELETE FROM word_pairs;
+
 -- Classic hard pool pairs (word -> hard / expert alternate)
 INSERT INTO word_pairs (word_a, word_b, similarity, level) VALUES
 ('Barista', 'Waiter', 62, 'hard'), ('Barista', 'Bartender', 89, 'expert'),
@@ -435,7 +438,7 @@ BEGIN
     v_next_phase := 'result';
     v_next_timer := NOW() + INTERVAL '8 seconds';
     IF v_winner = 'civilians' THEN
-      SELECT array_agg(voter::UUID) INTO v_correct_ids
+      SELECT array_agg(key::UUID) INTO v_correct_ids
       FROM jsonb_each_text(v_gs.votes)
       WHERE value = v_top_target::TEXT;
       SELECT array_agg(id) INTO v_other_civ_ids
