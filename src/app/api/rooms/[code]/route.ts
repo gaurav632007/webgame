@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const { code } = await params;
 
     const { data: room, error } = await supabase

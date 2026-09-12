@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -13,23 +13,17 @@ const createRoomSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = createAdminClient();
     const body = await request.json();
     const data = createRoomSchema.parse(body);
 
-    // Create anonymous user session if needed
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    let playerId = user?.id;
-    
-    if (!playerId) {
-      // Generate a temporary ID for anonymous players
-      playerId = crypto.randomUUID();
-    }
+    // Anonymous play: mint a stable host player id upfront so
+    // rooms.host_id === host players.id (start_game relies on this).
+    const hostPlayerId = crypto.randomUUID();
 
     // Call the database function to create room
     const { data: result, error } = await supabase.rpc('create_room_with_code', {
-      p_host_id: playerId,
+      p_host_id: hostPlayerId,
       p_max_players: data.maxPlayers,
       p_mode: data.mode,
       p_difficulty: data.difficulty,
@@ -41,23 +35,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create room' }, { status: 500 });
     }
 
-    const room = result[0] as { room_id: string; code: string };
+    const room = (result as Array<{ room_id: string; code: string }>)[0];
+    if (!room) {
+      return NextResponse.json({ error: 'Failed to create room' }, { status: 500 });
+    }
 
     // Add host as first player and return its id so the host
     // goes straight to the lobby (no second join needed).
-    const { data: hostPlayer, error: playerError } = await supabase
-      .from('players')
-      .insert({
-        room_id: room.room_id,
-        nickname: data.nickname,
-        avatar_id: data.avatarId,
-        is_host: true,
-        role: 'spectator',
-      })
-      .select('id')
-      .single();
+    const { error: playerError } = await supabase.from('players').insert({
+      id: hostPlayerId,
+      room_id: room.room_id,
+      nickname: data.nickname,
+      avatar_id: data.avatarId,
+      is_host: true,
+      role: 'spectator',
+    });
 
-    if (playerError || !hostPlayer) {
+    if (playerError) {
       console.error('Add host player error:', playerError);
       // Clean up room if player creation fails
       await supabase.from('rooms').delete().eq('id', room.room_id);
@@ -67,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       roomId: room.room_id,
       code: room.code,
-      playerId: (hostPlayer as { id: string }).id,
+      playerId: hostPlayerId,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
