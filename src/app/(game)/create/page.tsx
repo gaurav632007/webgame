@@ -104,11 +104,15 @@ export default function CreateRoomPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Game Mode</label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {GAME_MODES.slice(0, 6).map((mode) => (
-                      <button key={mode.value} type="button" onClick={() => setSettings({ ...settings, mode: mode.value })}
-                        className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${settings.mode === mode.value ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
+                    {GAME_MODES.map((mode) => (
+                      <button key={mode.value} type="button" disabled={!mode.playable} title={mode.playable ? mode.description : `${mode.label} is coming soon`}
+                        onClick={() => setSettings({ ...settings, mode: mode.value })}
+                        className={`p-3 rounded-xl border-2 text-center transition-all duration-200 relative ${settings.mode === mode.value ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'} ${mode.playable ? '' : 'opacity-50 cursor-not-allowed'}`}>
                         <div className="text-2xl mb-1">{mode.icon}</div>
                         <div className="text-xs font-medium text-gray-700">{mode.label}</div>
+                        {!mode.playable && (
+                          <span className="absolute top-1 right-1 text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-1.5 py-0.5">SOON</span>
+                        )}
                       </button>
                     ))}
                   </div>

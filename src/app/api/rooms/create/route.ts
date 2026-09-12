@@ -5,7 +5,8 @@ import { z } from 'zod';
 const createRoomSchema = z.object({
   nickname: z.string().min(1).max(30),
   maxPlayers: z.number().min(4).max(12).default(8),
-  mode: z.enum(['classic', 'desi-life', 'hardcore', 'chaos', 'image-clue', 'friends-custom', 'desi-expert', 'ai-chaos']).default('classic'),
+  // Only modes with seeded topics (see PLAYABLE_MODES in types/game.ts).
+  mode: z.enum(['classic', 'desi-life', 'hardcore', 'desi-expert']).default('classic'),
   difficulty: z.enum(['easy', 'medium', 'hard', 'expert']).default('medium'),
   rounds: z.number().min(1).max(10).default(3),
   avatarId: z.number().min(1).max(8).default(1),
