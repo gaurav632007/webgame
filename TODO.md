@@ -240,6 +240,17 @@
 - [x] Git commit
 - [x] Git push
 
+## 🕵️ PHASE 15 — BLIND ENGINE + DATASETS (spec difficulties)
+
+- [x] 007 migration (pairs, datasets col, imposter_word, spec timers, blind get_my_view, new scoring, Time's Up)
+- [x] 4 difficulties with spec timers (Easy 30/60/20 → Expert 10/30/12)
+- [x] Blind deceiver on Hard/Expert (similar word, never told; own-word clue validation)
+- [x] Host dataset picker (live counts + examples; lobby editable; offline chips)
+- [x] New scoring (+10 correct vote, +2 assist, +15 survive, +5 steal)
+- [x] Verified live: 19/19 blind checks + 31/31 regression = 50/50 green
+- [x] Git commit
+- [x] Git push
+
 ## 🟥 PHASE 11 — MODES
 
 - [x] Classic (baseline — seeded easy/medium/hard)
