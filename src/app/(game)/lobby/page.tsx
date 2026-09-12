@@ -90,6 +90,12 @@ function LobbyContent() {
             router.push('/');
             return;
           }
+          if (next.status === 'playing') {
+            // Host started (or rematched): follow into the game.
+            leftRef.current = true;
+            router.push(`/play?room=${roomId}&player=${playerId}`);
+            return;
+          }
           setRoom(next);
           setSettings({ maxPlayers: next.max_players, mode: next.mode, difficulty: next.difficulty, rounds: next.rounds });
         }
@@ -99,7 +105,7 @@ function LobbyContent() {
       supabase.removeChannel(playersChannel);
       supabase.removeChannel(roomChannel);
     };
-  }, [roomId, fetchRoomData, info, router, supabase]);
+  }, [roomId, playerId, fetchRoomData, info, router, supabase]);
 
   // Best-effort leave beacon when the tab closes.
   useEffect(() => {
