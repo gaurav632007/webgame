@@ -107,13 +107,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Advances one step: role_reveal -> clue -> discussion -> voting -> result
 -- (-> next round role_reveal | game_over). Callable by the host at any time,
 -- or by any room member once the phase timer has expired.
-CREATE OR REPLACE FUNCTION advance_phase(p_room_id UUID, p_player_id UUID)
+CREATE OR REPLACE FUNCTION advance_phase(p_room_id UUID, p_player_id UUID, p_force BOOLEAN DEFAULT false)
 RETURNS TABLE (success BOOLEAN, error TEXT, phase VARCHAR(20)) AS $$
 DECLARE
   v_gs game_state%ROWTYPE;
   v_room rooms%ROWTYPE;
   v_is_host BOOLEAN;
   v_is_member BOOLEAN;
+  v_first_turn UUID;
   v_next_phase VARCHAR(20);
   v_next_timer TIMESTAMPTZ;
   v_player_ids UUID[];
@@ -147,7 +148,7 @@ BEGIN
 
   SELECT is_host INTO v_is_host FROM players WHERE id = p_player_id;
 
-  IF NOT v_is_host AND (v_gs.timer_ends_at IS NULL OR v_gs.timer_ends_at > NOW()) THEN
+  IF NOT v_is_host AND NOT p_force AND (v_gs.timer_ends_at IS NULL OR v_gs.timer_ends_at > NOW()) THEN
     RETURN QUERY SELECT false, 'Phase timer still running', v_gs.phase;
     RETURN;
   END IF;
@@ -157,11 +158,16 @@ BEGIN
     RETURN;
   END IF;
 
-  -- role_reveal -> clue (30s) ----------------------------------------------
+  -- role_reveal -> clue (30s, turn reset to first connected player) ------------
   IF v_gs.phase = 'role_reveal' THEN
     v_next_phase := 'clue';
     v_next_timer := NOW() + INTERVAL '30 seconds';
-    UPDATE game_state SET phase = v_next_phase, timer_ends_at = v_next_timer, updated_at = NOW()
+    SELECT id INTO v_first_turn
+    FROM players WHERE room_id = p_room_id AND is_connected = true
+    ORDER BY joined_at ASC LIMIT 1;
+    UPDATE game_state
+    SET phase = v_next_phase, timer_ends_at = v_next_timer,
+        current_turn = v_first_turn, clues = '{}', updated_at = NOW()
     WHERE room_id = p_room_id;
     RETURN QUERY SELECT true, NULL::TEXT, v_next_phase;
     RETURN;

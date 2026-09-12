@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar } from '@/components/ui';
+import { ReactionBar } from '@/components/game/ReactionBar';
 import type { Player } from '@/types/game';
 
 // NOTE: never select the `secret` column directly — it is revoked for anon
@@ -162,7 +163,17 @@ function PlayContent() {
             <Timer endsAt={gameState.timer_ends_at} size="lg" variant="default" showLabel />
           </div>
           {gameState.phase === 'role_reveal' && <RoleRevealScreen myRole={myRole} secret={secret} />}
-          {gameState.phase === 'clue' && <ClueScreen myRole={myRole} secret={secret} currentTurn={gameState.current_turn} playerId={playerId ?? ''} clues={gameState.clues || {}} />}
+          {gameState.phase === 'clue' && (
+            <ClueScreen
+              myRole={myRole}
+              secret={secret}
+              currentTurn={gameState.current_turn}
+              playerId={playerId ?? ''}
+              roomId={roomId ?? ''}
+              players={players}
+              clues={gameState.clues || {}}
+            />
+          )}
           {gameState.phase === 'discussion' && <DiscussionScreen />}
           {gameState.phase === 'voting' && <VotingScreen playerId={playerId ?? ''} players={players} votes={gameState.votes || {}} />}
           {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} />}
@@ -211,13 +222,45 @@ function RoleRevealScreen({ myRole, secret }: { myRole: string; secret: string |
   );
 }
 
-function ClueScreen({ myRole, secret, currentTurn, playerId, clues }: { myRole: string; secret: string | null; currentTurn: string | null; playerId: string; clues: Record<string, string> }) {
+function ClueScreen({
+  myRole, secret, currentTurn, playerId, roomId, players, clues,
+}: {
+  myRole: string; secret: string | null; currentTurn: string | null;
+  playerId: string; roomId: string; players: Player[]; clues: Record<string, string>;
+}) {
   const [clue, setClue] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const isMyTurn = currentTurn === playerId;
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const clueCount = Object.keys(clues).length;
+  const turnPlayer = currentTurn ? byId.get(currentTurn) : undefined;
+
   const handleSubmit = async () => {
-    if (!clue.trim() || !isMyTurn) return;
-    setClue('');
+    const text = clue.trim();
+    if (!text || !isMyTurn || isSubmitting) return;
+    if (text.length > 200) {
+      setSubmitError('Clue must be 200 characters or fewer.');
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch('/api/game/clue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId, text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit clue');
+      setClue('');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit clue');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
   return (
     <Card className="card-elevated">
       <CardContent className="p-6">
@@ -231,18 +274,53 @@ function ClueScreen({ myRole, secret, currentTurn, playerId, clues }: { myRole: 
             <p className="text-sm font-medium text-purple-700">You are the Imposter. Blend in!</p>
           </div>
         )}
-        <div className="space-y-4 mb-6">
-          {Object.entries(clues).map(([pid, text]) => (
-            <div key={pid} className="p-4 bg-gray-50 rounded-xl border border-gray-100"><p className="text-gray-900">{text}</p></div>
-          ))}
+
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg font-bold text-gray-900">Clues</h3>
+          <span className="text-sm text-gray-500">{clueCount}/{players.length} in</span>
         </div>
+
+        <div className="space-y-3 mb-6">
+          {Object.entries(clues).map(([pid, text]) => {
+            const author = byId.get(pid);
+            return (
+              <motion.div key={pid} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <Avatar avatarId={author?.avatar_id ?? 1} size="xs" nickname={author?.nickname ?? '?'} />
+                  <p className="font-semibold text-sm text-gray-900">{author?.nickname ?? 'Someone'}{pid === playerId ? ' (you)' : ''}</p>
+                </div>
+                <p className="text-gray-900 mb-2">{text}</p>
+                <ReactionBar roomId={roomId} playerId={playerId} targetType="clue" targetId={pid} compact />
+              </motion.div>
+            );
+          })}
+          {clueCount === 0 && <p className="text-center text-gray-400 text-sm py-4">No clues yet — yours could be first.</p>}
+        </div>
+
         {isMyTurn ? (
-          <div className="space-y-4">
-            <textarea value={clue} onChange={(e) => setClue(e.target.value)} placeholder="Enter your clue..." className="w-full p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none min-h-[100px]" maxLength={200} />
-            <Button onClick={handleSubmit} disabled={!clue.trim()} className="w-full">SUBMIT CLUE</Button>
+          <div className="space-y-3">
+            <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 text-center">
+              <p className="text-sm font-semibold text-orange-700">Your turn! Give a clue.</p>
+            </div>
+            <textarea
+              value={clue}
+              onChange={(e) => setClue(e.target.value)}
+              placeholder={myRole === 'imposter' ? 'Say something vague but believable...' : 'Hint at the secret without saying it...'}
+              className="w-full p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none min-h-[100px]"
+              maxLength={200}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">{clue.trim().length}/200</span>
+              {submitError && <span className="text-xs text-red-600">{submitError}</span>}
+            </div>
+            <Button onClick={handleSubmit} disabled={!clue.trim() || isSubmitting} loading={isSubmitting} className="w-full">
+              SUBMIT CLUE
+            </Button>
           </div>
         ) : (
-          <p className="text-center text-gray-500">Waiting for other players...</p>
+          <p className="text-center text-gray-500">
+            {turnPlayer ? `Waiting on ${turnPlayer.nickname}...` : 'Waiting for other players...'}
+          </p>
         )}
       </CardContent>
     </Card>
