@@ -331,7 +331,7 @@ function LobbyContent() {
                 {connectedPlayers.length < room.max_players && (
                   <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="col-span-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">
                     <div className="text-4xl mb-2" aria-hidden="true">+</div>
-                    <span className="text-sm font-medium">Waiting for players...</span>
+                    <span className="text-sm font-medium">Doston ka intezaar...</span>
                   </motion.div>
                 )}
               </motion.div>
@@ -347,7 +347,7 @@ function LobbyContent() {
               </motion.div>
             </div>
           ) : (
-            <div className="mt-6 text-center text-gray-500"><p>Waiting for host to start the game...</p></div>
+            <div className="mt-6 text-center text-gray-500"><p>Host game shuru karega — thoda sabar! ☕</p></div>
           )}
           {isHost && !canStart && (
             <p className="mt-3 text-center text-sm text-gray-500">Need at least 4 players to start ({connectedPlayers.length}/{room.max_players} here)</p>
