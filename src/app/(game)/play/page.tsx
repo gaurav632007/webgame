@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar, Modal } from '@/components/ui';
 import { ReactionBar } from '@/components/game/ReactionBar';
 import { ConfettiBurst } from '@/components/game/Confetti';
+import { ModeBanner } from '@/components/game/ModeBanner';
 import type { Player } from '@/types/game';
 
 // NOTE: never select the `secret` column directly — it is revoked for anon
@@ -54,6 +55,7 @@ function PlayContent() {
   const [myRole, setMyRole] = useState<Role>('spectator');
   const [secret, setSecret] = useState<string | null>(null);
   const [myView, setMyView] = useState<MyView>({ role: null, secret: null, category: null, hint: null, difficulty: null });
+  const [roomMeta, setRoomMeta] = useState({ mode: 'classic', difficulty: 'medium', rounds: 3 });
 
   const supabase = createClient();
 
@@ -107,6 +109,16 @@ function PlayContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMyView();
     fetchPlayers();
+    const fetchRoomMeta = async () => {
+      try {
+        const { data } = await supabase.from('rooms').select('mode, difficulty, rounds').eq('id', roomId).single();
+        const meta = data as unknown as { mode: string; difficulty: string; rounds: number } | null;
+        if (meta) setRoomMeta({ mode: meta.mode, difficulty: meta.difficulty, rounds: meta.rounds });
+      } catch {
+        /* non-fatal cosmetics */
+      }
+    };
+    fetchRoomMeta();
 
     const channel = supabase
       .channel(`game:${roomId}`)
@@ -170,9 +182,10 @@ function PlayContent() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       <div className="absolute inset-0" style={{ backgroundImage: `url(${patternSvg})` }} />
-      <GameHeader roomCode={gameState.room_code ?? ''} phase={gameState.phase} round={gameState.round} maxRounds={3} timerEndsAt={gameState.timer_ends_at} onLeave={() => router.push('/')} />
+      <GameHeader roomCode={gameState.room_code ?? ''} phase={gameState.phase} round={gameState.round} maxRounds={roomMeta.rounds} mode={roomMeta.mode} difficulty={roomMeta.difficulty} timerEndsAt={gameState.timer_ends_at} onLeave={() => router.push('/')} />
       <main className="relative px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
+          <ModeBanner mode={roomMeta.mode} difficulty={roomMeta.difficulty} round={gameState.round} rounds={roomMeta.rounds} />
           <div className="mb-6 flex items-center justify-between">
             <PhaseBadge phase={gameState.phase} />
             <Timer endsAt={gameState.timer_ends_at} size="lg" variant="default" showLabel />

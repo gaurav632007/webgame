@@ -209,6 +209,20 @@
 - [x] Git commit
 - [x] Git push
 
+## 🎨 PHASE 14 — GAME FEEL (mode identity + offline flow)
+
+- [x] Mode theme map (gradient, tagline, emoji per mode) + difficulty themes
+- [x] ModeBanner on every play screen (mode, level, round, timer summary)
+- [x] Mode + difficulty pills in game header and lobby
+- [x] Themed results banner
+- [x] Offline: dropped clue-tap ceremony (spoken clues, straight to discussion)
+- [x] Offline: fast single-tap secret vote with auto-advance
+- [x] Offline: auto outcome from votes (tie = imposter survives), PAKDA/BACH GAYA reveal + confetti
+- [x] Offline scoring (caught: civilians +3 each, survived: imposter +5)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
+
 ## 🏆 PHASE 13 — CLASSIC RULES+ (final guess, scoring, ties, hints, nightmare)
 
 - [x] 006 migration (hint column + 104 backfills, nightmare level, scores/final_guess/vote_calls/revote_targets/secret_topic_id, difficulty timers, scoring, re-vote, get_my_view v2)

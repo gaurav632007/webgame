@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button, Card, CardContent, Avatar, AvatarPicker, Input, GameHeader } from '@/components/ui';
 import { popIn } from '@/lib/animations';
+import { difficultyTheme, modeTheme } from '@/lib/game/modeTheme';
 import { GAME_MODES } from '@/types/game';
 import type { Player, Room } from '@/types/game';
 import { useToastHelpers } from '@/components/ui/Toast';
@@ -259,7 +260,14 @@ function LobbyContent() {
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="font-display text-2xl font-bold text-gray-900">Players ({connectedPlayers.length}/{room.max_players})</h2>
+              <div>
+                <h2 className="font-display text-2xl font-bold text-gray-900">Players ({connectedPlayers.length}/{room.max_players})</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  <span className={`inline-block font-bold rounded-full px-2 py-0.5 text-xs mr-1.5 ${modeTheme(room.mode).pill}`}>{modeTheme(room.mode).emoji} {modeTheme(room.mode).label}</span>
+                  <span className={`inline-block font-bold rounded-full px-2 py-0.5 text-xs mr-1.5 ${difficultyTheme(room.difficulty).pill}`}>{difficultyTheme(room.difficulty).label}</span>
+                  <span className="text-xs">{room.rounds} round{room.rounds > 1 ? 's' : ''}</span>
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={copyRoomCode}>Copy Code</Button>
                 <Button variant="outline" size="sm" onClick={shareRoom}>Share</Button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { difficultyTheme, modeTheme } from '@/lib/game/modeTheme';
 import { Timer } from './Timer';
 
 interface GameHeaderProps {
@@ -8,6 +9,8 @@ interface GameHeaderProps {
   phase?: string;
   round?: number;
   maxRounds?: number;
+  mode?: string;
+  difficulty?: string;
   timerEndsAt?: string | null;
   onCopyCode?: () => void;
   onLeave?: () => void;
@@ -20,10 +23,14 @@ export function GameHeader({
   phase,
   round,
   maxRounds,
+  mode,
+  difficulty,
   timerEndsAt,
   onCopyCode,
   onLeave,
 }: GameHeaderProps) {
+  const m = mode ? modeTheme(mode) : null;
+  const d = difficulty ? difficultyTheme(difficulty) : null;
   return (
     <header className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50" />
@@ -58,7 +65,17 @@ export function GameHeader({
             )}
           </div>
           
-          <div className="flex items-center gap-3 sm:ml-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {m && (
+              <span className={cn('inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black', m.pill)}>
+                <span aria-hidden="true">{m.emoji}</span> {m.label.toUpperCase()}
+              </span>
+            )}
+            {d && (
+              <span className={cn('inline-flex items-center px-2.5 py-1.5 rounded-xl text-xs font-black', d.pill)}>
+                {d.label.toUpperCase()}
+              </span>
+            )}
             {phase && (
               <PhaseBadge phase={phase} />
             )}
