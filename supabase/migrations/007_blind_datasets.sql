@@ -438,9 +438,9 @@ BEGIN
     v_next_phase := 'result';
     v_next_timer := NOW() + INTERVAL '8 seconds';
     IF v_winner = 'civilians' THEN
-      SELECT array_agg(key::UUID) INTO v_correct_ids
-      FROM jsonb_each_text(v_gs.votes)
-      WHERE value = v_top_target::TEXT;
+      SELECT array_agg(v.voter::UUID) INTO v_correct_ids
+      FROM jsonb_each_text(v_gs.votes) AS v(voter, target)
+      WHERE v.target = v_top_target::TEXT;
       SELECT array_agg(id) INTO v_other_civ_ids
       FROM unnest(v_civilian_ids) AS id
       WHERE id != ALL(COALESCE(v_correct_ids, '{}'));
