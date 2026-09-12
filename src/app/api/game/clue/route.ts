@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
 
     const { data: gs } = await supabase.from('game_state').select('*').eq('room_id', roomId).single();
     const state = gs as unknown as {
-      phase: string; clues: Record<string, string>; current_turn: string | null; secret: string | null;
+      phase: string; clues: Record<string, string>; current_turn: string | null;
+      secret: string | null; imposter_word: string | null; imposter_ids: string[];
     } | null;
     if (!state) return NextResponse.json({ error: 'Game has not started' }, { status: 400 });
     if (state.phase !== 'clue') return NextResponse.json({ error: 'Not the clue phase' }, { status: 400 });
@@ -33,14 +34,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not your turn" }, { status: 400 });
     }
 
-    // Nightmare: exactly one word.
-    if (difficulty === 'nightmare' && /\s/.test(text.trim())) {
-      return NextResponse.json({ error: 'Nightmare mode: sirf ONE word! No spaces allowed.' }, { status: 400 });
+    // Expert: exactly one word.
+    if (difficulty === 'expert' && /\s/.test(text.trim())) {
+      return NextResponse.json({ error: 'Expert mode: sirf ONE word! No spaces allowed.' }, { status: 400 });
     }
 
-    // Illegal clue: never the secret (or a telling chunk of it).
-    const secretWord = decryptSecret(state.secret) ?? '';
-    const nSecret = norm(secretWord);
+    // Illegal clue: never your own word (or a telling chunk of it).
+    // Blind imposters are validated against THEIR word, so nothing leaks.
+    const isBlindDeceiver = (state.imposter_ids || []).includes(playerId) && !!state.imposter_word;
+    const ownWord = decryptSecret(isBlindDeceiver ? state.imposter_word : state.secret) ?? '';
+    const nSecret = norm(ownWord);
     const nClue = norm(text);
     const secretParts = nSecret.split(' ').filter((w) => w.length >= 4);
     const saysSecret =

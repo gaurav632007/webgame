@@ -202,7 +202,7 @@ function PlayContent() {
               roomId={roomId ?? ''}
               players={players}
               clues={gameState.clues || {}}
-              nightmare={myView.difficulty === 'nightmare'}
+              expert={myView.difficulty === 'expert'}
             />
           )}
           {gameState.phase === 'discussion' && (
@@ -234,6 +234,7 @@ function PlayContent() {
               round={gameState.round}
               votes={gameState.votes || {}}
               finalGuess={gameState.final_guess || {}}
+              crewWord={secret}
             />
           )}
           {gameState.phase === 'game_over' && (
@@ -247,6 +248,7 @@ function PlayContent() {
               round={gameState.round}
               votes={gameState.votes || {}}
               finalGuess={gameState.final_guess || {}}
+              crewWord={secret}
               final
             />
           )}
@@ -267,24 +269,35 @@ export default function PlayPage() {
 function RoleRevealScreen({ myRole, secret, category, hint, difficulty }: {
   myRole: string; secret: string | null; category: string | null; hint: string | null; difficulty: string | null;
 }) {
+  // NOTE: on Hard/Expert the deceiver receives role 'civilian' with a
+  // different word on purpose — this card must never claim civilian status.
+  const awareImposter = myRole === 'imposter';
   return (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
       <div className="mb-8">
-        <div className="text-8xl mb-4" aria-hidden="true">{myRole === 'imposter' ? 'I' : 'C'}</div>
-        <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">{myRole === 'imposter' ? 'YOU ARE THE IMPOSTER' : 'YOU ARE A CIVILIAN'}</h2>
-        <p className="text-gray-600 text-lg">{myRole === 'imposter' ? "Blend in. Figure out the secret. Don't get caught!" : 'You know the secret. Give a clue without making it obvious.'}</p>
+        <div className="text-8xl mb-4" aria-hidden="true">{awareImposter ? 'I' : 'C'}</div>
+        {awareImposter ? (
+          <>
+            <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">YOU ARE THE IMPOSTER</h2>
+            <p className="text-gray-600 text-lg">Blend in. Figure out the secret. Don&apos;t get caught!</p>
+          </>
+        ) : (
+          <>
+            <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">YOUR WORD</h2>
+            <p className="text-gray-600 text-lg">Give clues based on what you know. Dhyaan se!</p>
+          </>
+        )}
       </div>
-      {myRole === 'civilian' && secret && (
+      {!awareImposter && secret && (
         <Card className="card-elevated bg-gradient-to-br from-orange-500 to-pink-500">
           <CardContent className="p-8 text-center text-white">
             {category && <p className="text-sm font-medium mb-1 opacity-90">CATEGORY: {category.toUpperCase()}</p>}
-            <p className="text-sm font-medium mb-2 opacity-90">THE SECRET IS</p>
             <p className="font-display text-4xl font-bold tracking-wider">{secret}</p>
-            <p className="text-sm mt-4 opacity-80">Give a clue that hints at it without giving it away</p>
+            <p className="text-sm mt-4 opacity-80">Hint at it without saying it. Baaki sab ko convince karo!</p>
           </CardContent>
         </Card>
       )}
-      {myRole === 'imposter' && (
+      {awareImposter && (
         <Card className="card-elevated bg-gradient-to-br from-purple-500 to-pink-500">
           <CardContent className="p-8 text-center text-white">
             <p className="text-sm font-medium mb-2 opacity-90">YOUR MISSION</p>
@@ -296,22 +309,23 @@ function RoleRevealScreen({ myRole, secret, category, hint, difficulty }: {
             ) : (
               <p className="font-display text-2xl font-bold mb-4">You know NOTHING. Good luck!</p>
             )}
-            <p className="text-sm opacity-80">
-              {difficulty === 'nightmare' ? 'Nightmare: one-word clues, short timers, no re-votes.' : 'Watch what others say. Give a vague clue. Act natural.'}
-            </p>
+            <p className="text-sm opacity-80">Watch what others say. Give a vague clue. Act natural.</p>
           </CardContent>
         </Card>
+      )}
+      {difficulty === 'expert' && (
+        <p className="mt-4 text-sm font-bold text-purple-700">EXPERT: one-word clues, short timers. Koi galti nahi!</p>
       )}
     </motion.div>
   );
 }
 
 function ClueScreen({
-  myRole, secret, currentTurn, playerId, roomId, players, clues, nightmare,
+  myRole, secret, currentTurn, playerId, roomId, players, clues, expert,
 }: {
   myRole: string; secret: string | null; currentTurn: string | null;
   playerId: string; roomId: string; players: Player[]; clues: Record<string, string>;
-  nightmare: boolean;
+  expert: boolean;
 }) {
   const [clue, setClue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -382,15 +396,15 @@ function ClueScreen({
           {clueCount === 0 && <p className="text-center text-gray-400 text-sm py-4">No clues yet — yours could be first.</p>}
         </div>
 
-        {nightmare && (
-          <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-center">
-            <p className="text-sm font-bold text-red-700">NIGHTMARE: exactly ONE word. No secret word. No mercy.</p>
+        {expert && (
+          <div className="mb-4 p-3 bg-purple-50 rounded-xl border border-purple-200 text-center">
+            <p className="text-sm font-bold text-purple-700">EXPERT: exactly ONE word. No secret word. No mercy.</p>
           </div>
         )}
         {isMyTurn ? (
           <div className="space-y-3">
             <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 text-center">
-              <p className="text-sm font-semibold text-orange-700">Your turn! Give a clue{nightmare ? ' — ONE word' : ''}.</p>
+              <p className="text-sm font-semibold text-orange-700">Your turn! Give a clue{expert ? ' — ONE word' : ''}.</p>
             </div>
             <textarea
               value={clue}
@@ -719,10 +733,10 @@ function useTypewriter(text: string, start: boolean, speedMs = 55): string {
   return shown;
 }
 
-function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, round, votes, finalGuess, final }: {
+function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, round, votes, finalGuess, crewWord, final }: {
   winner: string; imposters: Player[]; players: Player[]; playerId: string; roomId: string;
   myRole: string; round: number; votes: Record<string, string>;
-  finalGuess: { by?: string; guess?: string; correct?: boolean }; final?: boolean;
+  finalGuess: { by?: string; guess?: string; correct?: boolean }; crewWord: string | null; final?: boolean;
 }) {
   const civiliansWon = winner === 'civilians';
   const reduceMotion = useReducedMotion();
@@ -733,7 +747,26 @@ function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, ro
   const [guessError, setGuessError] = useState<string | null>(null);
   const nameOf = (id: string) => players.find((p) => p.id === id)?.nickname ?? 'Someone';
   const hasGuessed = finalGuess && Object.keys(finalGuess).length > 0;
-  const iAmCaughtImposter = myRole === 'imposter' && civiliansWon && !hasGuessed;
+  // Post-reveal the deceiver is known to all, so the steal box is public —
+  // the server accepts only the real deceiver's guess.
+  const showStealBox = civiliansWon && !hasGuessed;
+  const [revealedWords, setRevealedWords] = useState<{ secret: string | null; imposterWord: string | null }>({ secret: crewWord, imposterWord: null });
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/game/result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, playerId }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setRevealedWords({ secret: d.secret ?? crewWord, imposterWord: d.imposterWord ?? null });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, playerId, crewWord]);
 
   const submitGuess = async () => {
     if (!guess.trim() || isGuessing) return;
@@ -783,19 +816,30 @@ function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, ro
 
         {stage >= 2 && (
           <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.6, ease: 'easeOut' }} style={{ transformStyle: 'preserve-3d' }}>
-            <p className="text-sm font-semibold text-white/70 mb-3">THE IMPOSTER WAS</p>
+            <p className="text-sm font-semibold text-white/70 mb-3">
+              {revealedWords.imposterWord ? 'HAD A DIFFERENT WORD' : 'THE IMPOSTER WAS'}
+            </p>
             <div className="flex flex-wrap justify-center gap-4 mb-4">
               {imposters.length > 0 ? (
                 imposters.map((p) => (
                   <div key={p.id} className="text-center">
                     <Avatar avatarId={p.avatar_id} size="2xl" nickname={p.nickname} role="imposter" />
                     <p className="mt-2 font-display text-2xl font-bold text-white">{p.nickname}</p>
+                    {revealedWords.imposterWord && (
+                      <p className="text-sm font-bold text-purple-300">their word: {revealedWords.imposterWord}</p>
+                    )}
                   </div>
                 ))
               ) : (
                 <p className="font-display text-2xl font-bold text-white">{names}</p>
               )}
             </div>
+            {revealedWords.imposterWord && revealedWords.secret && (
+              <p className="text-white/80 text-sm mb-1">
+                Crew word: <strong className="text-amber-300">{revealedWords.secret}</strong>
+                {'  ·  Ohhhh, THAT\'S why they said that!'}
+              </p>
+            )}
           </motion.div>
         )}
 
@@ -833,10 +877,10 @@ function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, ro
               ))}
           </div>
 
-          {iAmCaughtImposter && (
+          {showStealBox && (
             <div className="mt-4 bg-purple-900/60 border border-purple-400/40 rounded-2xl p-4">
               <p className="font-display text-lg font-bold text-purple-200">ONE LAST CHANCE!</p>
-              <p className="text-white/70 text-sm mb-3">Secret word guess karo — sahi hua toh round tumhara (+5)!</p>
+              <p className="text-white/70 text-sm mb-3">Deceiver: name the crew word to steal the round (+5)!</p>
               <div className="flex gap-2">
                 <input
                   value={guess}
@@ -855,8 +899,8 @@ function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, ro
             </div>
           )}
 
-          {!iAmCaughtImposter && civiliansWon && !hasGuessed && (
-            <p className="text-white/70 text-sm mt-4">Pakda gaya imposter guess kar raha hai... 🍿</p>
+          {civiliansWon && !hasGuessed && myRole !== 'imposter' && (
+            <p className="text-white/70 text-sm mt-4">Deceiver soch raha hai... Tum bhi guess kar sakte ho, par sirf deceiver ka guess gina jayega! 🍿</p>
           )}
 
           {hasGuessed && (

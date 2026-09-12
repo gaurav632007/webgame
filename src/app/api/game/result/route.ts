@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     const { data: gs } = await supabase.from('game_state').select('*').eq('room_id', roomId).single();
     const state = gs as unknown as {
       phase: string; round: number; secret: string | null; secret_topic_id: string | null;
+      imposter_word: string | null;
       winner: string | null; imposter_ids: string[];
       votes: Record<string, string>; scores: Record<string, number>;
       final_guess: { by?: string; guess?: string; correct?: boolean };
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       secret: decryptSecret(state.secret),
+      imposterWord: decryptSecret(state.imposter_word),
       category,
       winner: state.winner,
       phase: state.phase,

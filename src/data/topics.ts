@@ -106,11 +106,23 @@ export const LOCAL_TOPICS: LocalTopic[] = [
   { word: 'Third Umpire', category: 'cricket', difficulty: 'hard', mode: 'hardcore' },
 ];
 
-export function pickLocalSecret(mode: GameMode, difficulty: Difficulty): string {
-  const pool =
-    LOCAL_TOPICS.filter((t) => t.mode === mode && t.difficulty === difficulty).length > 0
-      ? LOCAL_TOPICS.filter((t) => t.mode === mode && t.difficulty === difficulty)
-      : LOCAL_TOPICS.filter((t) => t.mode === mode);
+export function pickLocalSecret(mode: GameMode, difficulty: Difficulty, datasets: string[] = []): string {
+  const inPack = (t: LocalTopic) => datasets.length === 0 || datasets.includes(t.category);
+  const exact = LOCAL_TOPICS.filter((t) => t.mode === mode && t.difficulty === difficulty && inPack(t));
+  const pool = exact.length > 0 ? exact : LOCAL_TOPICS.filter((t) => t.mode === mode && inPack(t));
   const list = pool.length > 0 ? pool : LOCAL_TOPICS.filter((t) => t.mode === 'classic');
   return list[Math.floor(Math.random() * list.length)].word;
+}
+
+export function localCategories(): Array<{ category: string; count: number; examples: string[] }> {
+  const map = new Map<string, { count: number; examples: string[] }>();
+  for (const t of LOCAL_TOPICS) {
+    if (!map.has(t.category)) map.set(t.category, { count: 0, examples: [] });
+    const e = map.get(t.category)!;
+    e.count += 1;
+    if (e.examples.length < 4 && !e.examples.includes(t.word)) e.examples.push(t.word);
+  }
+  return [...map.entries()]
+    .map(([category, v]) => ({ category, count: v.count, examples: v.examples }))
+    .sort((a, b) => b.count - a.count);
 }

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button, Card, CardContent, Avatar, AvatarPicker, Input, GameHeader } from '@/components/ui';
 import { popIn } from '@/lib/animations';
 import { difficultyTheme, modeTheme } from '@/lib/game/modeTheme';
-import { GAME_MODES } from '@/types/game';
+import { GAME_MODES, categoryIcon, prettyCategory } from '@/types/game';
 import type { Player, Room } from '@/types/game';
 import { useToastHelpers } from '@/components/ui/Toast';
 
@@ -31,7 +31,8 @@ function LobbyContent() {
   const [selfNickname, setSelfNickname] = useState('');
   const [selfAvatar, setSelfAvatar] = useState(1);
   const [isSavingSelf, setIsSavingSelf] = useState(false);
-  const [settings, setSettings] = useState({ maxPlayers: 8, mode: 'classic' as Room['mode'], difficulty: 'medium' as Room['difficulty'], rounds: 3 });
+  const [settings, setSettings] = useState({ maxPlayers: 8, mode: 'classic' as Room['mode'], difficulty: 'medium' as Room['difficulty'], rounds: 3, datasets: [] as string[] });
+  const [datasetOptions, setDatasetOptions] = useState<Array<{ category: string; count: number }>>([]);
   const leftRef = useRef(false);
 
   const supabase = createClient();
@@ -46,7 +47,8 @@ function LobbyContent() {
         return;
       }
       setRoom(roomData);
-      setSettings({ maxPlayers: roomData.max_players, mode: roomData.mode, difficulty: roomData.difficulty, rounds: roomData.rounds });
+      const withDatasets = roomData as unknown as Room & { datasets?: string[] };
+      setSettings({ maxPlayers: roomData.max_players, mode: roomData.mode, difficulty: roomData.difficulty, rounds: roomData.rounds, datasets: withDatasets.datasets ?? [] });
 
       const { data: playersData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
       const list = (playersData ?? []) as unknown as Player[];
@@ -73,6 +75,12 @@ function LobbyContent() {
   }, [roomId, playerId, editingSelf, info, router, supabase]);
 
   useEffect(() => {
+    fetch('/api/topics/datasets')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.datasets) setDatasetOptions(d.datasets as Array<{ category: string; count: number }>);
+      })
+      .catch(() => {});
     // Initial fetch on mount + realtime subscription below; cascading render is intended here.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRoomData();
@@ -99,7 +107,8 @@ function LobbyContent() {
             return;
           }
           setRoom(next);
-          setSettings({ maxPlayers: next.max_players, mode: next.mode, difficulty: next.difficulty, rounds: next.rounds });
+          const nextWithDatasets = next as unknown as Room & { datasets?: string[] };
+          setSettings({ maxPlayers: next.max_players, mode: next.mode, difficulty: next.difficulty, rounds: next.rounds, datasets: nextWithDatasets.datasets ?? [] });
         }
       })
       .subscribe();
@@ -228,7 +237,17 @@ function LobbyContent() {
   const updateSettings = async (next: typeof settings) => {
     if (!isHost || !roomId) return;
     try {
-      const { error: settingsError } = await supabase.from('rooms').update(next).eq('id', roomId);
+      // rooms columns are snake_case — map explicitly (incl. dataset packs).
+      const { error: settingsError } = await supabase
+        .from('rooms')
+        .update({
+          max_players: next.maxPlayers,
+          mode: next.mode,
+          difficulty: next.difficulty,
+          rounds: next.rounds,
+          datasets: next.datasets,
+        })
+        .eq('id', roomId);
       if (settingsError) throw settingsError;
       setSettings(next);
       setShowSettings(false);
@@ -265,7 +284,12 @@ function LobbyContent() {
                 <p className="text-sm text-gray-500 mt-0.5">
                   <span className={`inline-block font-bold rounded-full px-2 py-0.5 text-xs mr-1.5 ${modeTheme(room.mode).pill}`}>{modeTheme(room.mode).emoji} {modeTheme(room.mode).label}</span>
                   <span className={`inline-block font-bold rounded-full px-2 py-0.5 text-xs mr-1.5 ${difficultyTheme(room.difficulty).pill}`}>{difficultyTheme(room.difficulty).label}</span>
-                  <span className="text-xs">{room.rounds} round{room.rounds > 1 ? 's' : ''}</span>
+                  <span className="text-xs mr-1.5">{room.rounds} round{room.rounds > 1 ? 's' : ''}</span>
+                  <span className="text-xs text-gray-500">
+                    {(room as unknown as { datasets?: string[] }).datasets?.length
+                      ? (room as unknown as { datasets?: string[] }).datasets!.map(prettyCategory).join(' · ')
+                      : 'Mixed packs'}
+                  </span>
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -402,13 +426,39 @@ function LobbyContent() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['easy', 'medium', 'hard', 'expert', 'nightmare'] as const).map((diff) => (
+                        {(['easy', 'medium', 'hard', 'expert'] as const).map((diff) => (
                           <button key={diff} type="button" onClick={() => setSettings({ ...settings, difficulty: diff })}
                             className={`px-3 py-2 rounded-xl border-2 text-center text-sm font-medium transition-all duration-200 ${settings.difficulty === diff ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
                             {diff.charAt(0).toUpperCase() + diff.slice(1)}
                           </button>
                         ))}
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Word Packs {settings.datasets.length === 0 && <span className="font-normal text-gray-500">(Mixed)</span>}</label>
+                      {datasetOptions.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                          {datasetOptions.map((d) => {
+                            const active = settings.datasets.includes(d.category);
+                            return (
+                              <button
+                                key={d.category}
+                                type="button"
+                                aria-pressed={active}
+                                title={`${d.count} words`}
+                                onClick={() =>
+                                  setSettings({
+                                    ...settings,
+                                    datasets: active ? settings.datasets.filter((c) => c !== d.category) : [...settings.datasets, d.category],
+                                  })
+                                }
+                                className={`px-2.5 py-1.5 rounded-xl border-2 text-xs font-bold transition-all ${active ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                                {categoryIcon(d.category)} {prettyCategory(d.category)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-3 pt-4">
                       <Button variant="outline" className="flex-1" onClick={() => setShowSettings(false)}>Cancel</Button>

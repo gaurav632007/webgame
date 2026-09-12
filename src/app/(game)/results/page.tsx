@@ -35,6 +35,7 @@ interface ScoreRow {
 
 interface ResultData {
   secret: string | null;
+  imposterWord: string | null;
   category: string | null;
   winner: string | null;
   phase: string;
@@ -208,7 +209,18 @@ function ResultsContent() {
                     : `Imposter guessed "${data.finalGuess.guess}" — wrong! CREW WINS!`}
                 </div>
               )}
-              <h3 className="font-display text-xl font-bold text-gray-900 mb-4 text-center">THE IMPOSTER {data.imposters.length > 1 ? 'WERE' : 'WAS'}...</h3>
+              <h3 className="font-display text-xl font-bold text-gray-900 mb-4 text-center">
+                {data.imposterWord
+                  ? 'HAD A DIFFERENT WORD...'
+                  : data.imposters.length > 1
+                    ? 'THE IMPOSTERS WERE...'
+                    : 'THE IMPOSTER WAS...'}
+              </h3>
+              {data.imposterWord && (
+                <p className="text-center text-sm text-gray-600 mb-4">
+                  Crew: <strong>{data.secret ?? '???'}</strong> · Deceiver had: <strong className="text-purple-700">{data.imposterWord}</strong>
+                </p>
+              )}
               <div className="flex flex-wrap justify-center gap-4 mb-2">
                 {data.imposters.map((player, i) => (
                   <motion.div key={player.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 * i }} className="text-center">
@@ -224,7 +236,7 @@ function ResultsContent() {
           <Card className="card-elevated mb-6">
             <CardContent className="p-6">
               <h3 className="font-display text-xl font-bold text-gray-900 mb-1 text-center">SCOREBOARD</h3>
-              <p className="text-xs text-gray-500 text-center mb-4">Catch +2 · Survive +3 · Steal +5</p>
+              <p className="text-xs text-gray-500 text-center mb-4">Correct vote +10 · Caught assist +2 · Survive +15 · Steal +5</p>
               <div className="space-y-2 mb-2">
                 {data.scoreboard.map((s, i) => (
                   <div key={s.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl">
