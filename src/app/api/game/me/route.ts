@@ -28,8 +28,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to load role' }, { status: 500 });
     }
 
-    const view = data as { role: string | null; secret: string | null };
-    return NextResponse.json({ role: view.role, secret: decryptSecret(view.secret) });
+    const view = data as {
+      role: string | null; secret: string | null;
+      category: string | null; hint: string | null; difficulty: string | null;
+    };
+    return NextResponse.json({
+      role: view.role,
+      secret: decryptSecret(view.secret),
+      category: view.category,
+      hint: view.hint,
+      difficulty: view.difficulty,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });

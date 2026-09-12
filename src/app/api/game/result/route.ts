@@ -22,8 +22,10 @@ export async function POST(request: NextRequest) {
 
     const { data: gs } = await supabase.from('game_state').select('*').eq('room_id', roomId).single();
     const state = gs as unknown as {
-      phase: string; round: number; secret: string | null;
+      phase: string; round: number; secret: string | null; secret_topic_id: string | null;
       winner: string | null; imposter_ids: string[];
+      votes: Record<string, string>; scores: Record<string, number>;
+      final_guess: { by?: string; guess?: string; correct?: boolean };
     } | null;
     if (!state) return NextResponse.json({ error: 'Game has not started' }, { status: 400 });
     if (state.phase !== 'result' && state.phase !== 'game_over') {
@@ -44,6 +46,28 @@ export async function POST(request: NextRequest) {
     const imposterSet = new Set(state.imposter_ids || []);
     const imposters = allPlayers.filter((p) => imposterSet.has(p.id));
     const civilians = allPlayers.filter((p) => !imposterSet.has(p.id));
+    const nameOf = (id: string) => allPlayers.find((p) => p.id === id)?.nickname ?? 'Someone';
+
+    // Vote breakdown: who got how many, from whom.
+    const tally = new Map<string, string[]>();
+    Object.entries(state.votes || {}).forEach(([voter, target]) => {
+      if (!tally.has(target)) tally.set(target, []);
+      tally.get(target)?.push(voter);
+    });
+    const voteBreakdown = [...tally.entries()]
+      .map(([target, voters]) => ({ targetId: target, nickname: nameOf(target), count: voters.length, voters: voters.map(nameOf) }))
+      .sort((a, b) => b.count - a.count);
+
+    // Category for flavor (resolved server-side from the sealed topic id).
+    let category: string | null = null;
+    if (state.secret_topic_id) {
+      const { data: topic } = await supabase.from('topics').select('category').eq('id', state.secret_topic_id).single();
+      category = (topic as unknown as { category: string } | null)?.category ?? null;
+    }
+
+    const scoreboard = allPlayers
+      .map((p) => ({ id: p.id, nickname: p.nickname, avatar_id: p.avatar_id, role: p.role, points: (state.scores || {})[p.id] ?? 0 }))
+      .sort((a, b) => b.points - a.points);
 
     // Best-effort history row (dedupe: one row per room per 5 minutes).
     try {
@@ -71,6 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       secret: decryptSecret(state.secret),
+      category,
       winner: state.winner,
       phase: state.phase,
       round: state.round,
@@ -80,6 +105,9 @@ export async function POST(request: NextRequest) {
       roomCode: roomRow?.code ?? '',
       imposters,
       civilians,
+      voteBreakdown,
+      finalGuess: state.final_guess && Object.keys(state.final_guess).length > 0 ? state.final_guess : null,
+      scoreboard,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -17,8 +17,24 @@ interface ResultPlayer {
   is_host: boolean;
 }
 
+interface VoteRow {
+  targetId: string;
+  nickname: string;
+  count: number;
+  voters: string[];
+}
+
+interface ScoreRow {
+  id: string;
+  nickname: string;
+  avatar_id: number;
+  role: string;
+  points: number;
+}
+
 interface ResultData {
   secret: string | null;
+  category: string | null;
   winner: string | null;
   phase: string;
   round: number;
@@ -28,6 +44,9 @@ interface ResultData {
   roomCode: string;
   imposters: ResultPlayer[];
   civilians: ResultPlayer[];
+  voteBreakdown: VoteRow[];
+  finalGuess: { by?: string; guess?: string; correct?: boolean } | null;
+  scoreboard: ScoreRow[];
 }
 
 function ResultsContent() {
@@ -166,9 +185,27 @@ function ResultsContent() {
           <Card className="card-elevated mb-6">
             <CardContent className="p-6">
               <div className="mb-6 p-4 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl text-white text-center">
+                {data.category && <p className="text-sm font-medium opacity-90 mb-1">CATEGORY: {data.category.toUpperCase()}</p>}
                 <p className="text-sm font-medium opacity-90 mb-1">THE SECRET WAS</p>
                 <p className="font-display text-3xl font-bold tracking-wider">{data.secret ?? '???'}</p>
               </div>
+              {data.voteBreakdown.length > 0 && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                  <p className="text-xs font-bold tracking-widest text-gray-500 mb-2">VOTE RESULT</p>
+                  {data.voteBreakdown.map((v) => (
+                    <p key={v.targetId} className="text-sm text-gray-800">
+                      <strong>{v.nickname}</strong> — {v.count} vote{v.count > 1 ? 's' : ''} ({v.voters.join(', ')})
+                    </p>
+                  ))}
+                </div>
+              )}
+              {data.finalGuess && (
+                <div className={`mb-6 p-4 rounded-xl text-center font-display text-lg font-bold ${data.finalGuess.correct ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                  {data.finalGuess.correct
+                    ? `IMPOSSIBLE! Imposter guessed "${data.finalGuess.guess}" — STOLE THE ROUND! (+5)`
+                    : `Imposter guessed "${data.finalGuess.guess}" — wrong! CREW WINS!`}
+                </div>
+              )}
               <h3 className="font-display text-xl font-bold text-gray-900 mb-4 text-center">THE IMPOSTER {data.imposters.length > 1 ? 'WERE' : 'WAS'}...</h3>
               <div className="flex flex-wrap justify-center gap-4 mb-2">
                 {data.imposters.map((player, i) => (
@@ -177,6 +214,24 @@ function ResultsContent() {
                     <p className="mt-2 font-medium text-gray-900">{player.nickname}</p>
                     <RoleBadge role="imposter" />
                   </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-elevated mb-6">
+            <CardContent className="p-6">
+              <h3 className="font-display text-xl font-bold text-gray-900 mb-1 text-center">SCOREBOARD</h3>
+              <p className="text-xs text-gray-500 text-center mb-4">Catch +2 · Survive +3 · Steal +5</p>
+              <div className="space-y-2 mb-2">
+                {data.scoreboard.map((s, i) => (
+                  <div key={s.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl">
+                    <span className="w-6 text-center font-bold text-gray-400">{i + 1}</span>
+                    <Avatar avatarId={s.avatar_id} size="sm" nickname={s.nickname} />
+                    <span className="flex-1 font-medium text-gray-900 text-sm truncate">{s.nickname}</span>
+                    {i === 0 && s.points > 0 && <span aria-label="Leader">👑</span>}
+                    <span className="font-mono font-bold text-orange-600">+{s.points}</span>
+                  </div>
                 ))}
               </div>
             </CardContent>

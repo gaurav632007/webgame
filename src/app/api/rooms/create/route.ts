@@ -8,7 +8,7 @@ const createRoomSchema = z.object({
   maxPlayers: z.number().min(4).max(12).default(8),
   // Only modes with seeded topics (see PLAYABLE_MODES in types/game.ts).
   mode: z.enum(['classic', 'desi-life', 'hardcore', 'desi-expert']).default('classic'),
-  difficulty: z.enum(['easy', 'medium', 'hard', 'expert']).default('medium'),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'expert', 'nightmare']).default('medium'),
   rounds: z.number().min(1).max(10).default(3),
   avatarId: z.number().min(1).max(8).default(1),
 });

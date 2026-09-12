@@ -209,6 +209,22 @@
 - [x] Git commit
 - [x] Git push
 
+## 🏆 PHASE 13 — CLASSIC RULES+ (final guess, scoring, ties, hints, nightmare)
+
+- [x] 006 migration (hint column + 104 backfills, nightmare level, scores/final_guess/vote_calls/revote_targets/secret_topic_id, difficulty timers, scoring, re-vote, get_my_view v2)
+- [x] Imposter intel by level (easy/medium: category+hint, hard: category, expert/nightmare: nothing)
+- [x] Illegal-clue enforcement (secret word ban) + nightmare one-word rule (server-side)
+- [x] Call-vote during discussion (host instant, majority threshold, live count)
+- [x] Tie → DEADLOCK re-vote among tied (nightmare skips; second tie → imposter)
+- [x] Final guess (caught imposter steals with +5, wrong = busted)
+- [x] Scoring (+2 catch, +3 survive, +5 steal) + scoreboard on results page
+- [x] Vote breakdown + category + final-guess banner on results
+- [x] Offline rework (spoken clues, no vote screen, pardafaash reveal + outcome buttons + confetti)
+- [x] Shared Confetti component
+- [ ] Run 006 migration on Supabase (needs user) → then extended playtest
+- [ ] Git commit
+- [ ] Git push
+
 ## 🟥 PHASE 11 — MODES
 
 - [x] Classic (baseline — seeded easy/medium/hard)

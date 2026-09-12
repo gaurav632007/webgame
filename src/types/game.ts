@@ -1,6 +1,6 @@
 export type GameMode = 'classic' | 'desi-life' | 'hardcore' | 'chaos' | 'image-clue' | 'friends-custom' | 'desi-expert' | 'ai-chaos';
 
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'nightmare';
 
 export type GamePhase = 
   | 'lobby' 
@@ -142,7 +142,17 @@ export const DIFFICULTIES: { value: Difficulty; label: string; description: stri
   { value: 'medium', label: 'Medium', description: 'Normal gameplay', color: 'text-yellow-600' },
   { value: 'hard', label: 'Hard', description: 'Similar concepts', color: 'text-orange-600' },
   { value: 'expert', label: 'Expert', description: 'Very subtle concepts', color: 'text-purple-600' },
+  { value: 'nightmare', label: 'Nightmare', description: 'One-word clues, no mercy', color: 'text-red-600' },
 ];
+
+/** Phase timers by difficulty: clue / discussion / voting seconds. */
+export const DIFFICULTY_TIMERS: Record<Difficulty, { clue: number; discussion: number; voting: number; finalGuess: number }> = {
+  easy: { clue: 60, discussion: 90, voting: 30, finalGuess: 20 },
+  medium: { clue: 45, discussion: 60, voting: 25, finalGuess: 15 },
+  hard: { clue: 30, discussion: 45, voting: 20, finalGuess: 10 },
+  expert: { clue: 20, discussion: 30, voting: 15, finalGuess: 10 },
+  nightmare: { clue: 15, discussion: 20, voting: 10, finalGuess: 8 },
+};
 
 export const PHASE_TIMERS: Record<GamePhase, number> = {
   lobby: 0,
