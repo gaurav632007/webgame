@@ -7,7 +7,7 @@ import { Button, Card, CardContent, Avatar } from '@/components/ui';
 import { ConfettiBurst } from '@/components/game/Confetti';
 import { ModeBanner } from '@/components/game/ModeBanner';
 import { GAME_MODES, DIFFICULTIES, categoryIcon, prettyCategory, type Difficulty, type GameMode } from '@/types/game';
-import { localCategories, pickLocalSecret } from '@/data/topics';
+import { LOCAL_TOPICS, OFFLINE_HINTS, localCategories, pickLocalSecret } from '@/data/topics';
 
 type Stage = 'setup' | 'reveal' | 'discuss' | 'vote' | 'result';
 
@@ -44,6 +44,7 @@ export default function OfflinePage() {
   const [players, setPlayers] = useState<OfflinePlayer[]>([]);
   const [packs, setPacks] = useState<string[]>([]);
   const [secret, setSecret] = useState('');
+  const [secretInfo, setSecretInfo] = useState<{ category: string; hint: string } | null>(null);
   const [imposters, setImposters] = useState<number[]>([]);
   const [step, setStep] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -60,7 +61,12 @@ export default function OfflinePage() {
     const shuffled = shuffle(idx);
     const impCount = roster.length >= 8 ? 2 : 1;
     setImposters(shuffled.slice(0, impCount));
-    setSecret(pickLocalSecret(mode, difficulty, packs));
+    const word = pickLocalSecret(mode, difficulty, packs);
+    setSecret(word);
+    const topic =
+      LOCAL_TOPICS.find((t) => t.word === word && t.mode === mode && t.difficulty === difficulty) ??
+      LOCAL_TOPICS.find((t) => t.word === word);
+    setSecretInfo(topic ? { category: topic.category, hint: OFFLINE_HINTS[topic.word] ?? topic.category } : null);
     setStep(0);
     setRevealed(false);
     setVotes(new Array(roster.length).fill(-1));
@@ -246,7 +252,16 @@ export default function OfflinePage() {
                       <div>
                         <p className="text-6xl mb-3">🕵️</p>
                         <p className="font-display text-2xl font-black text-purple-300">TUM HO IMPOSTER!</p>
-                        <p className="text-slate-300 mt-2 text-sm">Secret tumhe nahi pata. Natak karo, pakde mat jao!</p>
+                        {(difficulty === 'easy' || difficulty === 'medium') && secretInfo && (
+                          <div className="mt-3 rounded-xl bg-white/10 px-4 py-3">
+                            <p className="text-sm text-slate-200">Category: <strong className="text-amber-300">{secretInfo.category}</strong></p>
+                            <p className="text-sm text-slate-200">Hint: <strong className="text-amber-300">{secretInfo.hint}</strong></p>
+                          </div>
+                        )}
+                        {difficulty === 'hard' && secretInfo && (
+                          <p className="mt-3 text-sm text-slate-200">Category: <strong className="text-amber-300">{secretInfo.category}</strong> (bas itna hi!)</p>
+                        )}
+                        <p className="text-slate-300 mt-2 text-sm">Natak karo, pakde mat jao! Blend in!</p>
                       </div>
                     ) : (
                       <div>

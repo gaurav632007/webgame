@@ -203,6 +203,8 @@ function PlayContent() {
               players={players}
               clues={gameState.clues || {}}
               expert={myView.difficulty === 'expert'}
+              category={myView.category}
+              hint={myView.hint}
             />
           )}
           {gameState.phase === 'discussion' && (
@@ -212,6 +214,9 @@ function PlayContent() {
               players={players}
               isHost={isHost}
               voteCalls={gameState.vote_calls || {}}
+              myRole={myRole}
+              category={myView.category}
+              hint={myView.hint}
             />
           )}
           {gameState.phase === 'voting' && (
@@ -221,6 +226,9 @@ function PlayContent() {
               players={players}
               votes={gameState.votes || {}}
               revoteTargets={gameState.revote_targets || []}
+              myRole={myRole}
+              category={myView.category}
+              hint={myView.hint}
             />
           )}
           {gameState.phase === 'result' && (
@@ -320,12 +328,23 @@ function RoleRevealScreen({ myRole, secret, category, hint, difficulty }: {
   );
 }
 
+/** Persistent imposter intel — category + hint stay visible all game, not just the 5s reveal. */
+function ImposterIntel({ category, hint }: { category: string | null; hint: string | null }) {
+  if (!category && !hint) return null;
+  return (
+    <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 text-left" aria-label="Your imposter intel">
+      {category && <p className="text-sm text-purple-800">Category: <strong>{category}</strong></p>}
+      {hint && <p className="text-sm text-purple-800">Hint: <strong>{hint}</strong></p>}
+    </div>
+  );
+}
+
 function ClueScreen({
-  myRole, secret, currentTurn, playerId, roomId, players, clues, expert,
+  myRole, secret, currentTurn, playerId, roomId, players, clues, expert, category, hint,
 }: {
   myRole: string; secret: string | null; currentTurn: string | null;
   playerId: string; roomId: string; players: Player[]; clues: Record<string, string>;
-  expert: boolean;
+  expert: boolean; category: string | null; hint: string | null;
 }) {
   const [clue, setClue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -371,6 +390,7 @@ function ClueScreen({
         {myRole === 'imposter' && (
           <div className="mb-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
             <p className="text-sm font-medium text-purple-700">You are the Imposter. Blend in!</p>
+            <ImposterIntel category={category} hint={hint} />
           </div>
         )}
 
@@ -440,8 +460,9 @@ interface ChatMessage {
   created_at: string;
 }
 
-function DiscussionScreen({ roomId, playerId, players, isHost, voteCalls }: {
+function DiscussionScreen({ roomId, playerId, players, isHost, voteCalls, myRole, category, hint }: {
   roomId: string; playerId: string; players: Player[]; isHost: boolean; voteCalls: Record<string, boolean>;
+  myRole: string; category: string | null; hint: string | null;
 }) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -563,6 +584,12 @@ function DiscussionScreen({ roomId, playerId, players, isHost, voteCalls }: {
           <h3 className="font-display text-lg font-bold text-gray-900">Discussion</h3>
           <span className="text-xs text-gray-500">Make your case — then vote</span>
         </div>
+        {myRole === 'imposter' && (
+          <div className="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-200">
+            <p className="text-xs font-bold text-purple-600 tracking-widest">YOUR INTEL (only you see this)</p>
+            <ImposterIntel category={category} hint={hint} />
+          </div>
+        )}
         <div className="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-200 flex flex-col sm:flex-row items-center gap-2 justify-between">
           <p className="text-sm text-purple-800">
             {isHost
@@ -624,9 +651,10 @@ function DiscussionScreen({ roomId, playerId, players, isHost, voteCalls }: {
 }
 
 function VotingScreen({
-  playerId, roomId, players, votes, revoteTargets,
+  playerId, roomId, players, votes, revoteTargets, myRole, category, hint,
 }: {
   playerId: string; roomId: string; players: Player[]; votes: Record<string, string>; revoteTargets: string[];
+  myRole: string; category: string | null; hint: string | null;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -662,6 +690,12 @@ function VotingScreen({
     <Card className="card-elevated">
       <CardContent className="p-6 text-center">
         <h3 className="font-display text-2xl font-bold text-gray-900 mb-2">WHO IS THE IMPOSTER?</h3>
+        {myRole === 'imposter' && (
+          <div className="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-200 text-left">
+            <p className="text-xs font-bold text-purple-600 tracking-widest">YOUR INTEL (only you see this)</p>
+            <ImposterIntel category={category} hint={hint} />
+          </div>
+        )}
         {isRevote && (
           <div className="mb-3 p-3 bg-yellow-50 rounded-xl border border-yellow-300">
             <p className="font-bold text-yellow-800">DEADLOCK! Tie ho gaya.</p>
