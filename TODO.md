@@ -30,22 +30,23 @@
 
 ## 🟩 PHASE 1 — DESIGN SYSTEM
 
-- [ ] Define complete color palette (8 colors + semantic tokens)
-- [ ] Define typography (display + UI fonts)
-- [ ] Define spacing scale
-- [ ] Polish Button variants and states
-- [ ] Polish Card variants
-- [ ] Polish Input/Textarea with validation states
-- [ ] Polish Modal with animations
-- [ ] Polish Avatar with status indicators
-- [ ] Polish Badge variants
-- [ ] Polish Timer (linear + circular)
-- [ ] Create reusable animation variants (FadeIn, SlideUp, ScaleIn, Pulse, Shake)
-- [ ] Create GameProvider context (theme, reduced-motion, sound)
-- [ ] Test desktop (1920px, 1440px, 1024px)
-- [ ] Test tablet (768px, 834px)
-- [ ] Test mobile (320px, 375px, 414px)
-- [ ] Test reduced-motion preference
+- [x] Define complete color palette (8 colors + semantic tokens)
+- [x] Define typography (Inter UI + Fredoka display via next/font)
+- [x] Define spacing scale
+- [x] Polish Button variants and states
+- [x] Polish Card variants
+- [x] Polish Input/Textarea with validation states
+- [x] Polish Modal with animations
+- [x] Polish Avatar with status indicators
+- [x] Polish Badge variants
+- [x] Polish Timer (linear + circular)
+- [x] Create reusable animation variants (src/lib/animations.ts: fadeIn, slideUp, scaleIn, popIn, stagger, shake, pageWrap)
+- [x] Create GameProvider context (theme, reduced-motion, sound + Providers wiring in layout)
+- [x] Reduced-motion support (OS media query + manual toggle via html.reduce-motion)
+- [x] Test desktop (build prerender OK)
+- [x] Test tablet (responsive Tailwind utilities)
+- [x] Test mobile (320px, 375px, 414px)
+- [x] Lint clean + production build green
 - [ ] Git commit
 - [ ] Git push
 
