@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -174,7 +174,9 @@ function PlayContent() {
               clues={gameState.clues || {}}
             />
           )}
-          {gameState.phase === 'discussion' && <DiscussionScreen />}
+          {gameState.phase === 'discussion' && (
+            <DiscussionScreen roomId={roomId ?? ''} playerId={playerId ?? ''} players={players} />
+          )}
           {gameState.phase === 'voting' && <VotingScreen playerId={playerId ?? ''} players={players} votes={gameState.votes || {}} />}
           {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} />}
           {gameState.phase === 'game_over' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} final />}
@@ -327,24 +329,159 @@ function ClueScreen({
   );
 }
 
-function DiscussionScreen() {
+interface ChatMessage {
+  id: string;
+  player_id?: string;
+  player_nickname: string;
+  player_avatar: number;
+  text: string;
+  created_at: string;
+}
+
+function DiscussionScreen({ roomId, playerId, players }: { roomId: string; playerId: string; players: Player[] }) {
   const [message, setMessage] = useState('');
-  const [messages] = useState<Array<{ id: string; player_nickname: string; text: string }>>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [typingNames, setTypingNames] = useState<string[]>([]);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSent = useRef(0);
+  const supabase = createClient();
+  const byId = new Map(players.map((p) => [p.id, p]));
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('id, player_id, player_nickname, player_avatar, text, created_at')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (!cancelled) setMessages((data ?? []) as unknown as ChatMessage[]);
+    };
+    fetchMessages();
+
+    const msgChannel = supabase
+      .channel(`messages:${roomId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+        const row = payload.new as unknown as ChatMessage;
+        setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
+      })
+      .subscribe();
+
+    const typingChannel = supabase.channel(`typing:${roomId}`, { config: { broadcast: { self: false } } });
+    typingChannel
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { playerId: typerId, nickname } = payload.payload as { playerId: string; nickname: string };
+        if (typerId === playerId) return;
+        setTypingNames((prev) => (prev.includes(nickname) ? prev : [...prev, nickname]));
+        if (typingTimeout.current) clearTimeout(typingTimeout.current);
+        typingTimeout.current = setTimeout(() => setTypingNames([]), 2500);
+      })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+      supabase.removeChannel(msgChannel);
+      supabase.removeChannel(typingChannel);
+    };
+  }, [roomId, playerId, supabase]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  const broadcastTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingSent.current < 2000) return;
+    lastTypingSent.current = now;
+    const me = byId.get(playerId);
+    supabase.channel(`typing:${roomId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { playerId, nickname: me?.nickname ?? 'Someone' },
+    });
+  };
+
+  const send = async () => {
+    const text = message.trim();
+    if (!text || isSending) return;
+    if (text.length > 280) {
+      setSendError('Messages are limited to 280 characters.');
+      return;
+    }
+    setIsSending(true);
+    setSendError(null);
+    setMessage('');
+    try {
+      const res = await fetch('/api/game/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId, text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send');
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to send');
+      setMessage(text);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <Card className="card-elevated">
-      <CardContent className="p-6">
-        <div className="space-y-4 max-h-[400px] overflow-y-auto mb-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className="p-3 bg-gray-50 rounded-xl">
-              <p className="font-medium text-gray-900">{msg.player_nickname}</p>
-              <p className="text-gray-700">{msg.text}</p>
-            </div>
-          ))}
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-lg font-bold text-gray-900">Discussion</h3>
+          <span className="text-xs text-gray-500">Make your case — then vote</span>
         </div>
-        <div className="flex gap-2">
-          <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..." className="flex-1 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
-          <Button onClick={() => setMessage('')} disabled={!message.trim()}>Send</Button>
+        <div ref={scrollRef} className="space-y-3 max-h-[50vh] min-h-[240px] overflow-y-auto mb-3 pr-1" role="log" aria-label="Discussion messages" aria-live="polite">
+          {messages.length === 0 && (
+            <p className="text-center text-gray-400 text-sm py-8">No messages yet. Who&apos;s acting suspicious?</p>
+          )}
+          {messages.map((msg) => {
+            const mine = msg.player_id === playerId;
+            return (
+              <motion.div key={msg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${mine ? 'bg-orange-500 text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}>
+                  {!mine && <p className="text-xs font-semibold opacity-70 mb-0.5">{msg.player_nickname}</p>}
+                  <p className="text-sm break-words">{msg.text}</p>
+                  {!mine && (
+                    <ReactionBar roomId={roomId} playerId={playerId} targetType="message" targetId={msg.id} compact />
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
+        <div className="h-5 mb-1" aria-live="polite">
+          {typingNames.length > 0 && (
+            <p className="text-xs text-gray-500 italic">{typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing…</p>
+          )}
+        </div>
+        <div className="flex gap-2 sticky bottom-0 bg-white pt-1">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              broadcastTyping();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') send();
+            }}
+            placeholder="Who is suspicious and why?"
+            maxLength={280}
+            className="flex-1 p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            aria-label="Discussion message"
+          />
+          <Button onClick={send} disabled={!message.trim() || isSending} loading={isSending}>Send</Button>
+        </div>
+        {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
       </CardContent>
     </Card>
   );
