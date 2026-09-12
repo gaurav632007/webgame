@@ -95,6 +95,7 @@ const difficulties = [
   { name: 'MEDIUM', desc: 'Balanced. Fun. Suspicious.', sub: 'Thoda tez', bg: 'from-amber-500 to-yellow-600' },
   { name: 'HARD', desc: 'Every clue matters.', sub: 'Dimaag lagao', bg: 'from-red-500 to-rose-600' },
   { name: 'EXPERT', desc: 'Only true detectives survive.', sub: 'Asli khiladi', bg: 'from-purple-500 to-violet-700' },
+  { name: 'NIGHTMARE', desc: 'One-word clues. No mercy.', sub: 'Kya re bhai?!', bg: 'from-red-700 to-black' },
 ];
 
 const demoClues = [
@@ -249,7 +250,7 @@ export default function LandingPage() {
               <h2 className="font-display text-4xl sm:text-5xl font-black text-amber-300">CHOOSE YOUR DIFFICULTY</h2>
               <p className="text-slate-300 mt-1">From casual fun to full mind games.</p>
             </div>
-            <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-2 lg:grid-cols-5 gap-5">
               {difficulties.map((d) => (
                 <motion.div key={d.name} variants={staggerItem}>
                   <div className={`rounded-2xl bg-gradient-to-b ${d.bg} p-6 text-center shadow-xl shadow-black/30 h-full`}>

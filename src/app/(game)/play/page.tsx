@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar, Modal } from '@/components/ui';
 import { ReactionBar } from '@/components/game/ReactionBar';
+import { ConfettiBurst } from '@/components/game/Confetti';
 import type { Player } from '@/types/game';
 
 // NOTE: never select the `secret` column directly — it is revoked for anon
 // clients. Civilians receive it via POST /api/game/me (get_my_view RPC).
 const GAME_STATE_COLUMNS =
-  'id,room_id,phase,round,imposter_ids,current_turn,timer_ends_at,votes,clues,winner,created_at,updated_at';
+  'id,room_id,phase,round,imposter_ids,current_turn,timer_ends_at,votes,clues,winner,scores,final_guess,vote_calls,revote_targets,created_at,updated_at';
 
 const patternSvg = `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23f97316' fillOpacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4h-4zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E`;
 
@@ -27,6 +28,18 @@ interface GameStateRow {
   clues: Record<string, string>;
   room_code?: string;
   winner?: string | null;
+  scores: Record<string, number>;
+  final_guess: { by?: string; guess?: string; correct?: boolean };
+  vote_calls: Record<string, boolean>;
+  revote_targets: string[];
+}
+
+interface MyView {
+  role: Role | null;
+  secret: string | null;
+  category: string | null;
+  hint: string | null;
+  difficulty: string | null;
 }
 
 function PlayContent() {
@@ -40,6 +53,7 @@ function PlayContent() {
   const [isHost, setIsHost] = useState(false);
   const [myRole, setMyRole] = useState<Role>('spectator');
   const [secret, setSecret] = useState<string | null>(null);
+  const [myView, setMyView] = useState<MyView>({ role: null, secret: null, category: null, hint: null, difficulty: null });
 
   const supabase = createClient();
 
@@ -52,9 +66,10 @@ function PlayContent() {
         body: JSON.stringify({ roomId, playerId }),
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { role: Role | null; secret: string | null };
+      const data = (await res.json()) as MyView;
       if (data.role) setMyRole(data.role);
       setSecret(data.secret);
+      setMyView(data);
     } catch (err) {
       console.error('Fetch my view error:', err);
     }
@@ -162,7 +177,9 @@ function PlayContent() {
             <PhaseBadge phase={gameState.phase} />
             <Timer endsAt={gameState.timer_ends_at} size="lg" variant="default" showLabel />
           </div>
-          {gameState.phase === 'role_reveal' && <RoleRevealScreen myRole={myRole} secret={secret} />}
+          {gameState.phase === 'role_reveal' && (
+            <RoleRevealScreen myRole={myRole} secret={secret} category={myView.category} hint={myView.hint} difficulty={myView.difficulty} />
+          )}
           {gameState.phase === 'clue' && (
             <ClueScreen
               myRole={myRole}
@@ -172,16 +189,54 @@ function PlayContent() {
               roomId={roomId ?? ''}
               players={players}
               clues={gameState.clues || {}}
+              nightmare={myView.difficulty === 'nightmare'}
             />
           )}
           {gameState.phase === 'discussion' && (
-            <DiscussionScreen roomId={roomId ?? ''} playerId={playerId ?? ''} players={players} />
+            <DiscussionScreen
+              roomId={roomId ?? ''}
+              playerId={playerId ?? ''}
+              players={players}
+              isHost={isHost}
+              voteCalls={gameState.vote_calls || {}}
+            />
           )}
           {gameState.phase === 'voting' && (
-            <VotingScreen playerId={playerId ?? ''} roomId={roomId ?? ''} players={players} votes={gameState.votes || {}} />
+            <VotingScreen
+              playerId={playerId ?? ''}
+              roomId={roomId ?? ''}
+              players={players}
+              votes={gameState.votes || {}}
+              revoteTargets={gameState.revote_targets || []}
+            />
           )}
-          {gameState.phase === 'result' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} />}
-          {gameState.phase === 'game_over' && <ResultScreen winner={gameState.winner ?? ''} imposters={imposters} round={gameState.round} final />}
+          {gameState.phase === 'result' && (
+            <ResultScreen
+              winner={gameState.winner ?? ''}
+              imposters={imposters}
+              players={players}
+              playerId={playerId ?? ''}
+              roomId={roomId ?? ''}
+              myRole={myRole}
+              round={gameState.round}
+              votes={gameState.votes || {}}
+              finalGuess={gameState.final_guess || {}}
+            />
+          )}
+          {gameState.phase === 'game_over' && (
+            <ResultScreen
+              winner={gameState.winner ?? ''}
+              imposters={imposters}
+              players={players}
+              playerId={playerId ?? ''}
+              roomId={roomId ?? ''}
+              myRole={myRole}
+              round={gameState.round}
+              votes={gameState.votes || {}}
+              finalGuess={gameState.final_guess || {}}
+              final
+            />
+          )}
         </div>
       </main>
     </div>
@@ -196,17 +251,20 @@ export default function PlayPage() {
   );
 }
 
-function RoleRevealScreen({ myRole, secret }: { myRole: string; secret: string | null }) {
+function RoleRevealScreen({ myRole, secret, category, hint, difficulty }: {
+  myRole: string; secret: string | null; category: string | null; hint: string | null; difficulty: string | null;
+}) {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
       <div className="mb-8">
         <div className="text-8xl mb-4" aria-hidden="true">{myRole === 'imposter' ? 'I' : 'C'}</div>
         <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">{myRole === 'imposter' ? 'YOU ARE THE IMPOSTER' : 'YOU ARE A CIVILIAN'}</h2>
-        <p className="text-gray-600 text-lg">{myRole === 'imposter' ? "You don't know the secret. Listen carefully and blend in!" : 'You know the secret. Give a clue without making it obvious.'}</p>
+        <p className="text-gray-600 text-lg">{myRole === 'imposter' ? "Blend in. Figure out the secret. Don't get caught!" : 'You know the secret. Give a clue without making it obvious.'}</p>
       </div>
       {myRole === 'civilian' && secret && (
         <Card className="card-elevated bg-gradient-to-br from-orange-500 to-pink-500">
           <CardContent className="p-8 text-center text-white">
+            {category && <p className="text-sm font-medium mb-1 opacity-90">CATEGORY: {category.toUpperCase()}</p>}
             <p className="text-sm font-medium mb-2 opacity-90">THE SECRET IS</p>
             <p className="font-display text-4xl font-bold tracking-wider">{secret}</p>
             <p className="text-sm mt-4 opacity-80">Give a clue that hints at it without giving it away</p>
@@ -217,8 +275,17 @@ function RoleRevealScreen({ myRole, secret }: { myRole: string; secret: string |
         <Card className="card-elevated bg-gradient-to-br from-purple-500 to-pink-500">
           <CardContent className="p-8 text-center text-white">
             <p className="text-sm font-medium mb-2 opacity-90">YOUR MISSION</p>
-            <p className="font-display text-2xl font-bold mb-4">Blend In. Don&apos;t Get Caught.</p>
-            <p className="text-sm opacity-80">Watch what others say. Give a vague clue. Act natural.</p>
+            {(category || hint) ? (
+              <div className="mb-4">
+                {category && <p className="font-display text-xl font-bold">Category: {category}</p>}
+                {hint && <p className="text-lg opacity-90">Hint: {hint}</p>}
+              </div>
+            ) : (
+              <p className="font-display text-2xl font-bold mb-4">You know NOTHING. Good luck!</p>
+            )}
+            <p className="text-sm opacity-80">
+              {difficulty === 'nightmare' ? 'Nightmare: one-word clues, short timers, no re-votes.' : 'Watch what others say. Give a vague clue. Act natural.'}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -227,10 +294,11 @@ function RoleRevealScreen({ myRole, secret }: { myRole: string; secret: string |
 }
 
 function ClueScreen({
-  myRole, secret, currentTurn, playerId, roomId, players, clues,
+  myRole, secret, currentTurn, playerId, roomId, players, clues, nightmare,
 }: {
   myRole: string; secret: string | null; currentTurn: string | null;
   playerId: string; roomId: string; players: Player[]; clues: Record<string, string>;
+  nightmare: boolean;
 }) {
   const [clue, setClue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -301,10 +369,15 @@ function ClueScreen({
           {clueCount === 0 && <p className="text-center text-gray-400 text-sm py-4">No clues yet — yours could be first.</p>}
         </div>
 
+        {nightmare && (
+          <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-center">
+            <p className="text-sm font-bold text-red-700">NIGHTMARE: exactly ONE word. No secret word. No mercy.</p>
+          </div>
+        )}
         {isMyTurn ? (
           <div className="space-y-3">
             <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 text-center">
-              <p className="text-sm font-semibold text-orange-700">Your turn! Give a clue.</p>
+              <p className="text-sm font-semibold text-orange-700">Your turn! Give a clue{nightmare ? ' — ONE word' : ''}.</p>
             </div>
             <textarea
               value={clue}
@@ -340,12 +413,18 @@ interface ChatMessage {
   created_at: string;
 }
 
-function DiscussionScreen({ roomId, playerId, players }: { roomId: string; playerId: string; players: Player[] }) {
+function DiscussionScreen({ roomId, playerId, players, isHost, voteCalls }: {
+  roomId: string; playerId: string; players: Player[]; isHost: boolean; voteCalls: Record<string, boolean>;
+}) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [isCallingVote, setIsCallingVote] = useState(false);
+  const callCount = Object.keys(voteCalls || {}).length;
+  const needed = Math.ceil(players.length / 2);
+  const iCalled = !!(voteCalls || {})[playerId];
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
@@ -434,12 +513,40 @@ function DiscussionScreen({ roomId, playerId, players }: { roomId: string; playe
     }
   };
 
+  const callVote = async () => {
+    if (isCallingVote || iCalled) return;
+    setIsCallingVote(true);
+    try {
+      await fetch('/api/game/call-vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId }),
+      });
+    } catch (err) {
+      console.error('Call vote error:', err);
+    } finally {
+      setIsCallingVote(false);
+    }
+  };
+
   return (
     <Card className="card-elevated">
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-lg font-bold text-gray-900">Discussion</h3>
           <span className="text-xs text-gray-500">Make your case — then vote</span>
+        </div>
+        <div className="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-200 flex flex-col sm:flex-row items-center gap-2 justify-between">
+          <p className="text-sm text-purple-800">
+            {isHost
+              ? 'Host ho? Suspicion pak gaya toh vote shuru karo!'
+              : callCount > 0
+                ? `${callCount}/${needed} want to vote — shak badh raha hai!`
+                : 'Shak ho raha hai? Vote call karo!'}
+          </p>
+          <Button size="sm" variant="secondary" onClick={callVote} disabled={isCallingVote || iCalled} loading={isCallingVote}>
+            {iCalled ? `CALLED (${callCount}/${needed})` : isHost ? 'START VOTE NOW' : 'VOTE KARO!'}
+          </Button>
         </div>
         <div ref={scrollRef} className="space-y-3 max-h-[50vh] min-h-[240px] overflow-y-auto mb-3 pr-1" role="log" aria-label="Discussion messages" aria-live="polite">
           {messages.length === 0 && (
@@ -490,9 +597,9 @@ function DiscussionScreen({ roomId, playerId, players }: { roomId: string; playe
 }
 
 function VotingScreen({
-  playerId, roomId, players, votes,
+  playerId, roomId, players, votes, revoteTargets,
 }: {
-  playerId: string; roomId: string; players: Player[]; votes: Record<string, string>;
+  playerId: string; roomId: string; players: Player[]; votes: Record<string, string>; revoteTargets: string[];
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -500,7 +607,8 @@ function VotingScreen({
   const [voteError, setVoteError] = useState<string | null>(null);
   const hasVoted = !!votes[playerId];
   const votesIn = Object.keys(votes).length;
-  const candidates = players.filter((p) => p.id !== playerId);
+  const isRevote = (revoteTargets || []).length > 0;
+  const candidates = players.filter((p) => p.id !== playerId && (!isRevote || revoteTargets.includes(p.id)));
   const selectedPlayer = candidates.find((p) => p.id === selected);
 
   const submitVote = async () => {
@@ -527,6 +635,12 @@ function VotingScreen({
     <Card className="card-elevated">
       <CardContent className="p-6 text-center">
         <h3 className="font-display text-2xl font-bold text-gray-900 mb-2">WHO IS THE IMPOSTER?</h3>
+        {isRevote && (
+          <div className="mb-3 p-3 bg-yellow-50 rounded-xl border border-yellow-300">
+            <p className="font-bold text-yellow-800">DEADLOCK! Tie ho gaya.</p>
+            <p className="text-sm text-yellow-700">Re-vote — sirf tied players eligible hain.</p>
+          </div>
+        )}
         <p className="text-gray-600 mb-1">Tap a player, then confirm. Votes are locked in.</p>
         <p className="text-sm text-gray-500 mb-6" aria-live="polite">{votesIn}/{players.length} votes in</p>
         <div className="grid grid-cols-2 gap-4">
@@ -577,40 +691,6 @@ function VotingScreen({
   );
 }
 
-const CONFETTI_COLORS = ['#f97316', '#ec4899', '#a855f7', '#3b82f6', '#14b8a6', '#eab308', '#22c55e'];
-
-function ConfettiBurst() {
-  const reduceMotion = useReducedMotion();
-  const pieces = useMemo(
-    () =>
-      Array.from({ length: 48 }).map((_, i) => ({
-        id: i,
-        left: (i * 37) % 100,
-        delay: (i % 12) * 0.08,
-        duration: 2 + ((i * 7) % 10) / 8,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        size: 6 + ((i * 13) % 8),
-        round: i % 3 === 0,
-      })),
-    [],
-  );
-  if (reduceMotion) return null;
-  return (
-    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-      {pieces.map((p) => (
-        <motion.span
-          key={p.id}
-          initial={{ y: '-5vh', x: 0, opacity: 1, rotate: 0 }}
-          animate={{ y: '105vh', x: (p.id % 2 === 0 ? 60 : -60), opacity: 0.9, rotate: 540 }}
-          transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
-          className="absolute top-0"
-          style={{ left: `${p.left}%`, width: p.size, height: p.size * (p.round ? 1 : 0.5), backgroundColor: p.color, borderRadius: p.round ? '50%' : 2 }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function useTypewriter(text: string, start: boolean, speedMs = 55): string {
   const [shown, setShown] = useState('');
   useEffect(() => {
@@ -626,11 +706,40 @@ function useTypewriter(text: string, start: boolean, speedMs = 55): string {
   return shown;
 }
 
-function ResultScreen({ winner, imposters, round, final }: { winner: string; imposters: Player[]; round: number; final?: boolean }) {
+function ResultScreen({ winner, imposters, players, playerId, roomId, myRole, round, votes, finalGuess, final }: {
+  winner: string; imposters: Player[]; players: Player[]; playerId: string; roomId: string;
+  myRole: string; round: number; votes: Record<string, string>;
+  finalGuess: { by?: string; guess?: string; correct?: boolean }; final?: boolean;
+}) {
   const civiliansWon = winner === 'civilians';
   const reduceMotion = useReducedMotion();
   const [stage, setStage] = useState(reduceMotion ? 3 : 0);
   const suspenseText = useTypewriter('THE IMPOSTER WAS...', stage === 0 && !reduceMotion);
+  const [guess, setGuess] = useState('');
+  const [isGuessing, setIsGuessing] = useState(false);
+  const [guessError, setGuessError] = useState<string | null>(null);
+  const nameOf = (id: string) => players.find((p) => p.id === id)?.nickname ?? 'Someone';
+  const hasGuessed = finalGuess && Object.keys(finalGuess).length > 0;
+  const iAmCaughtImposter = myRole === 'imposter' && civiliansWon && !hasGuessed;
+
+  const submitGuess = async () => {
+    if (!guess.trim() || isGuessing) return;
+    setIsGuessing(true);
+    setGuessError(null);
+    try {
+      const res = await fetch('/api/game/final-guess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, playerId, guess: guess.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit guess');
+    } catch (err) {
+      setGuessError(err instanceof Error ? err.message : 'Failed to submit guess');
+    } finally {
+      setIsGuessing(false);
+    }
+  };
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -690,8 +799,62 @@ function ResultScreen({ winner, imposters, round, final }: { winner: string; imp
         )}
       </div>
 
-      {stage >= 3 && civiliansWon && <ConfettiBurst />}
-      {stage >= 3 && <p className="relative z-20 text-white/50 text-sm mt-8">{final ? 'Final scores next…' : 'Next round starting…'}</p>}
+      {stage >= 3 && civiliansWon && !hasGuessed && <ConfettiBurst />}
+
+      {stage >= 3 && (
+        <div className="relative z-20 mt-6 max-w-md mx-auto">
+          <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-left">
+            <p className="text-xs font-bold tracking-widest text-white/60 mb-2">VOTE RESULT</p>
+            {Object.keys(votes).length === 0 && <p className="text-white/70 text-sm">Koi vote nahi pada — imposter bach gaya!</p>}
+            {Object.entries(
+              Object.entries(votes).reduce<Record<string, string[]>>((acc, [voter, target]) => {
+                (acc[target] = acc[target] || []).push(voter);
+                return acc;
+              }, {}),
+            )
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([target, voters]) => (
+                <p key={target} className="text-white text-sm">
+                  <strong>{nameOf(target)}</strong> — {voters.length} vote{voters.length > 1 ? 's' : ''} ({voters.map(nameOf).join(', ')})
+                </p>
+              ))}
+          </div>
+
+          {iAmCaughtImposter && (
+            <div className="mt-4 bg-purple-900/60 border border-purple-400/40 rounded-2xl p-4">
+              <p className="font-display text-lg font-bold text-purple-200">ONE LAST CHANCE!</p>
+              <p className="text-white/70 text-sm mb-3">Secret word guess karo — sahi hua toh round tumhara (+5)!</p>
+              <div className="flex gap-2">
+                <input
+                  value={guess}
+                  onChange={(e) => setGuess(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitGuess();
+                  }}
+                  placeholder="Secret word..."
+                  maxLength={100}
+                  className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  aria-label="Final guess"
+                />
+                <Button variant="secondary" onClick={submitGuess} disabled={!guess.trim() || isGuessing} loading={isGuessing}>GUESS</Button>
+              </div>
+              {guessError && <p className="text-red-300 text-xs mt-1">{guessError}</p>}
+            </div>
+          )}
+
+          {!iAmCaughtImposter && civiliansWon && !hasGuessed && (
+            <p className="text-white/70 text-sm mt-4">Pakda gaya imposter guess kar raha hai... 🍿</p>
+          )}
+
+          {hasGuessed && (
+            <div className={`mt-4 rounded-2xl p-4 font-display text-xl font-bold ${finalGuess.correct ? 'bg-purple-900/60 border border-purple-400/40 text-purple-200' : 'bg-green-900/60 border border-green-400/40 text-green-200'}`}>
+              {finalGuess.correct ? 'IMPOSSIBLE! THE IMPOSTER STOLE THE ROUND! (+5)' : `BUSTED! "${finalGuess.guess}" galat hai. CREW WINS!`}
+            </div>
+          )}
+
+          <p className="text-white/50 text-sm mt-4">{final ? 'Final scores next…' : 'Next round starting…'}</p>
+        </div>
+      )}
     </div>
   );
 }

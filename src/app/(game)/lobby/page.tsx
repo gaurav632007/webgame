@@ -394,7 +394,7 @@ function LobbyContent() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['easy', 'medium', 'hard', 'expert'] as const).map((diff) => (
+                        {(['easy', 'medium', 'hard', 'expert', 'nightmare'] as const).map((diff) => (
                           <button key={diff} type="button" onClick={() => setSettings({ ...settings, difficulty: diff })}
                             className={`px-3 py-2 rounded-xl border-2 text-center text-sm font-medium transition-all duration-200 ${settings.difficulty === diff ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
                             {diff.charAt(0).toUpperCase() + diff.slice(1)}

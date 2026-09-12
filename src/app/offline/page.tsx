@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Button, Card, CardContent, Input, Avatar } from '@/components/ui';
+import { Button, Card, CardContent, Avatar } from '@/components/ui';
+import { ConfettiBurst } from '@/components/game/Confetti';
 import { GAME_MODES, DIFFICULTIES, type Difficulty, type GameMode } from '@/types/game';
 import { pickLocalSecret } from '@/data/topics';
 
-type Stage = 'setup' | 'reveal' | 'clue' | 'discuss' | 'vote' | 'result';
+type Stage = 'setup' | 'reveal' | 'clue' | 'discuss' | 'result';
 
 interface OfflinePlayer {
   name: string;
@@ -44,11 +45,10 @@ export default function OfflinePage() {
   const [imposters, setImposters] = useState<number[]>([]);
   const [step, setStep] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [clues, setClues] = useState<string[]>([]);
-  const [clueInput, setClueInput] = useState('');
-  const [votes, setVotes] = useState<number[]>([]);
   const [discussLeft, setDiscussLeft] = useState(60);
   const [score, setScore] = useState({ civilians: 0, imposters: 0 });
+  const [outcome, setOutcome] = useState<'civilians' | 'imposter' | null>(null);
+  const [showImposter, setShowImposter] = useState(false);
 
   const playableModes = useMemo(() => GAME_MODES.filter((m) => m.playable), []);
 
@@ -58,11 +58,10 @@ export default function OfflinePage() {
     const impCount = roster.length >= 8 ? 2 : 1;
     setImposters(shuffled.slice(0, impCount));
     setSecret(pickLocalSecret(mode, difficulty));
-    setClues(new Array(roster.length).fill(''));
-    setVotes(new Array(roster.length).fill(-1));
     setStep(0);
     setRevealed(false);
-    setClueInput('');
+    setOutcome(null);
+    setShowImposter(false);
     setStage('reveal');
   };
 
@@ -88,31 +87,12 @@ export default function OfflinePage() {
     return () => clearTimeout(t);
   }, [stage, discussLeft]);
 
-  const tally = () => {
-    const counts = new Map<number, number>();
-    votes.forEach((v) => {
-      if (v >= 0) counts.set(v, (counts.get(v) ?? 0) + 1);
-    });
-    let top = -1;
-    let topCount = 0;
-    let second = 0;
-    counts.forEach((c, idx) => {
-      if (c > topCount) {
-        second = topCount;
-        top = idx;
-        topCount = c;
-      } else if (c > second) {
-        second = c;
-      }
-    });
-    return topCount > second && imposters.includes(top) ? 'civilians' : 'imposter';
+  const recordOutcome = (w: 'civilians' | 'imposter') => {
+    setOutcome(w);
+    setScore((s) => (w === 'civilians' ? { ...s, civilians: s.civilians + 1 } : { ...s, imposters: s.imposters + 1 }));
   };
 
-  const winner = stage === 'result' ? tally() : null;
-
   const rematch = () => {
-    if (winner === 'civilians') setScore((s) => ({ ...s, civilians: s.civilians + 1 }));
-    else if (winner === 'imposter') setScore((s) => ({ ...s, imposters: s.imposters + 1 }));
     startGame(players);
   };
 
@@ -240,36 +220,30 @@ export default function OfflinePage() {
             )}
 
             {stage === 'clue' && (
-              <motion.div key={`clue-${step}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="text-center mb-4">
-                  <p className="text-slate-400 text-sm">Clue {step + 1} of {players.length}</p>
-                  <h2 className="font-display text-3xl font-black text-white">{players[step].name} ka clue</h2>
-                </div>
-                <div className="space-y-2 mb-5">
-                  {clues.slice(0, step).map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2">
-                      <span className="font-bold text-sm text-slate-300 w-24 truncate">{players[i].name}</span>
-                      <span className="text-white">{c}</span>
-                    </div>
+              <motion.div key={`clue-${step}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+                <p className="text-slate-400 text-sm mb-1">Clue {step + 1} of {players.length} — zor se bolo, likhna nahi hai!</p>
+                <h2 className="font-display text-4xl font-black text-white mb-2">{players[step].name}</h2>
+                <p className="text-amber-200 mb-2">Apna clue SABKO SUNAO 🗣️</p>
+                <p className="text-slate-400 text-sm mb-6">Baaki sab dhyaan se suno. Suspect list dimaag mein banao.</p>
+                <div className="flex justify-center gap-1.5 mb-6" aria-hidden="true">
+                  {players.map((_, i) => (
+                    <span key={i} className={`w-3 h-3 rounded-full ${i <= step ? 'bg-amber-400' : 'bg-white/15'}`} />
                   ))}
                 </div>
                 <Card className="bg-white/5 border-white/10 backdrop-blur max-w-md mx-auto">
-                  <CardContent className="p-6 space-y-3">
-                    <Input label="Apna clue likho (1 word best hai!)" value={clueInput} onChange={(e) => setClueInput(e.target.value)} maxLength={50} autoFocus />
-                    <Button size="lg" className="w-full" disabled={!clueInput.trim()}
+                  <CardContent className="p-6">
+                    <p className="text-slate-300 text-sm mb-4">Clue bola? Sabne suna? Phir button dabao — wapas nahi hoga!</p>
+                    <Button size="lg" className="w-full"
                       onClick={() => {
-                        const next = [...clues];
-                        next[step] = clueInput.trim();
-                        setClues(next);
-                        setClueInput('');
-                        if (step + 1 < players.length) setStep(step + 1);
-                        else {
+                        if (step + 1 < players.length) {
+                          setStep(step + 1);
+                        } else {
                           setStep(0);
                           setDiscussLeft(60);
                           setStage('discuss');
                         }
                       }}>
-                      CLUE LOCK KARO →
+                      CLUE BOLA, NEXT! →
                     </Button>
                   </CardContent>
                 </Card>
@@ -283,71 +257,64 @@ export default function OfflinePage() {
                 <div className="font-mono font-bold text-7xl text-white mb-6 tabular-nums">
                   {Math.floor(discussLeft / 60)}:{String(discussLeft % 60).padStart(2, '0')}
                 </div>
-                <div className="space-y-2 max-w-md mx-auto mb-6 text-left">
-                  {clues.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2">
-                      <span className="font-bold text-sm text-slate-300 w-24 truncate">{players[i].name}</span>
-                      <span className="text-white">{c}</span>
-                    </div>
+                <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto mb-6">
+                  {players.map((p, i) => (
+                    <span key={i} className="text-xs font-bold text-slate-300 bg-white/10 rounded-full px-3 py-1">{p.name}</span>
                   ))}
                 </div>
-                <Button size="lg" className="min-w-[240px]" onClick={() => { setStep(0); setStage('vote'); }}>
-                  {discussLeft > 0 ? 'SKIP KARO, VOTE PE CHALO' : 'TIME KHATAM — VOTE KARO!'}
+                <Button size="lg" className="min-w-[240px]" onClick={() => setStage('result')}>
+                  {discussLeft > 0 ? 'SKIP KARO, REVEAL KARO!' : 'TIME KHATAM — REVEAL KARO!'}
                 </Button>
               </motion.div>
             )}
 
-            {stage === 'vote' && (
-              <motion.div key={`vote-${step}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                <p className="text-slate-400 text-sm mb-1">Secret vote — player {step + 1} of {players.length}. Baaki sab door dekho!</p>
-                <h2 className="font-display text-3xl font-black text-white mb-5">{players[step].name}, imposter kaun?</h2>
-                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
-                  {players.map((p, i) =>
-                    i === step ? null : (
-                      <button key={i} onClick={() => {
-                        const next = [...votes];
-                        next[step] = i;
-                        setVotes(next);
-                        if (step + 1 < players.length) setStep(step + 1);
-                        else setStage('result');
-                      }}
-                        className="p-4 rounded-2xl bg-white/5 border-2 border-white/15 hover:border-amber-400 transition-all">
-                        <div className={`w-12 h-12 mx-auto rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i % 8]} flex items-center justify-center text-white font-bold mb-1`}>
-                          {p.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <p className="font-bold text-white text-sm truncate">{p.name}</p>
-                      </button>
-                    ),
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {stage === 'result' && winner && (
+            {stage === 'result' && (
               <motion.div key="result" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-                <h2 className={`font-display text-4xl sm:text-5xl font-black mb-2 ${winner === 'civilians' ? 'text-green-400' : 'text-purple-300'}`}>
-                  {winner === 'civilians' ? 'PAKDA GAYA! 🎉' : 'BACH GAYA! 😈'}
-                </h2>
-                <p className="text-slate-300 mb-5">Secret tha: <strong className="text-amber-300">{secret}</strong></p>
-                <div className="flex flex-wrap justify-center gap-3 mb-5">
-                  {imposters.map((i) => (
-                    <div key={i} className="bg-white/5 border border-purple-400/40 rounded-2xl px-5 py-3">
-                      <p className="text-xs font-bold text-purple-300 tracking-widest">IMPOSTER</p>
-                      <p className="font-display text-xl font-bold text-white">{players[i].name}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="max-w-md mx-auto mb-6 text-left space-y-2">
-                  <p className="text-sm font-bold text-slate-400">Votes:</p>
-                  {votes.map((v, i) => (
-                    <p key={i} className="text-sm text-slate-300">{players[i].name} → <strong className="text-white">{players[v].name}</strong></p>
-                  ))}
-                </div>
-                <p className="font-bold text-slate-200 mb-5">Session score — Civilians {score.civilians + (winner === 'civilians' ? 1 : 0)} : {score.imposters + (winner === 'imposter' ? 1 : 0)} Imposters</p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button size="lg" onClick={rematch}>REMATCH · EK AUR!</Button>
-                  <Button size="lg" variant="outline" className="border-slate-500 text-slate-200" onClick={() => setStage('setup')}>NEW SETUP</Button>
-                </div>
+                {!showImposter ? (
+                  <div>
+                    <p className="font-display text-2xl sm:text-3xl font-black text-white mb-2">SAB TAIYAAR?</p>
+                    <p className="text-slate-300 mb-6">Sabse bada twist — imposter ka pardafaash! Dhol bajao! 🥁</p>
+                    <Button size="lg" className="min-w-[260px]" onClick={() => setShowImposter(true)}>PARDAFAASH KARO! 🎭</Button>
+                  </div>
+                ) : (
+                  <div>
+                    <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.6 }}>
+                      <div className="flex flex-wrap justify-center gap-3 mb-4">
+                        {imposters.map((i) => (
+                          <div key={i} className="bg-white/5 border border-purple-400/40 rounded-2xl px-6 py-4">
+                            <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${AVATAR_GRADIENTS[i % 8]} flex items-center justify-center text-white font-display font-black text-xl mb-2`}>
+                              {players[i].name.slice(0, 2).toUpperCase()}
+                            </div>
+                            <p className="text-xs font-bold text-purple-300 tracking-widest">IMPOSTER THA!</p>
+                            <p className="font-display text-2xl font-black text-white">{players[i].name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                    <p className="text-slate-300 mb-5">Secret tha: <strong className="text-amber-300">{secret}</strong></p>
+                    {!outcome ? (
+                      <div className="max-w-md mx-auto">
+                        <p className="text-slate-200 font-bold mb-3">Toh batao — crew ne pakad liya tha ya nahi?</p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <Button size="lg" className="flex-1" onClick={() => recordOutcome('civilians')}>PAKAD LIYA! (+2)</Button>
+                          <Button size="lg" variant="secondary" className="flex-1" onClick={() => recordOutcome('imposter')}>BACH GAYA! (+3)</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {outcome === 'civilians' && <ConfettiBurst />}
+                        <h2 className={`font-display text-4xl font-black mb-2 ${outcome === 'civilians' ? 'text-green-400' : 'text-purple-300'}`}>
+                          {outcome === 'civilians' ? 'PAKDA GAYA! 🎉' : 'BACH GAYA! 😈'}
+                        </h2>
+                        <p className="font-bold text-slate-200 mb-5">Session score — Civilians {score.civilians} : {score.imposters} Imposters</p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <Button size="lg" onClick={rematch}>REMATCH · EK AUR!</Button>
+                          <Button size="lg" variant="outline" className="border-slate-500 text-slate-200" onClick={() => setStage('setup')}>NEW SETUP</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

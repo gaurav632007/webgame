@@ -17,11 +17,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You cannot vote for yourself' }, { status: 400 });
     }
 
-    const { data: gs } = await supabase.from('game_state').select('phase, votes').eq('room_id', roomId).single();
-    const state = gs as unknown as { phase: string; votes: Record<string, string> } | null;
+    const { data: gs } = await supabase.from('game_state').select('phase, votes, revote_targets').eq('room_id', roomId).single();
+    const state = gs as unknown as { phase: string; votes: Record<string, string>; revote_targets: string[] } | null;
     if (!state) return NextResponse.json({ error: 'Game has not started' }, { status: 400 });
     if (state.phase !== 'voting') return NextResponse.json({ error: 'Not the voting phase' }, { status: 400 });
     if (state.votes?.[voterId]) return NextResponse.json({ error: 'You already voted' }, { status: 400 });
+    if ((state.revote_targets || []).length > 0 && !state.revote_targets.includes(targetId)) {
+      return NextResponse.json({ error: 'DEADLOCK re-vote: only the tied players are eligible' }, { status: 400 });
+    }
 
     const { data: roster } = await supabase.from('players').select('id').eq('room_id', roomId).eq('is_connected', true);
     const memberIds = new Set(((roster ?? []) as Array<{ id: string }>).map((p) => p.id));
