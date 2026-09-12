@@ -47,8 +47,8 @@
 - [x] Test tablet (responsive Tailwind utilities)
 - [x] Test mobile (320px, 375px, 414px)
 - [x] Lint clean + production build green
-- [ ] Git commit
-- [ ] Git push
+- [x] Git commit (bc27c53 on phase-1-design-system)
+- [x] Git push (branch pushed + merged to master 4c4d0ff)
 
 ## 🟨 PHASE 2 — LANDING PAGE
 
