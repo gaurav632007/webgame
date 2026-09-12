@@ -195,6 +195,20 @@
 - [x] Git commit
 - [x] Git push
 
+## 🎨 PHASE 12A — FESTIVE FRONTEND + OFFLINE MODE (user-requested redesign)
+
+- [x] Dark night-bazaar landing (string lights, amber/pink gradients, gang lineup)
+- [x] Hinglish voice (hero, steps, modes, footer; game-screen touches)
+- [x] Character lineup with name tags (8 original characters)
+- [x] Chalkboard "Who's the imposter?" demo section
+- [x] Difficulty cards + modes grid with SOON badges
+- [x] Offline pass-and-play mode (/offline, zero backend: setup → pass reveal → pass clues → discuss timer → secret votes → PAKDA GAYA result + session score + rematch)
+- [x] Local topic data (src/data/topics.ts mirrors seed SQL)
+- [x] Entry points (landing CTAs, nav, footer; create page untouched)
+- [x] Lint clean + production build green (22 routes)
+- [x] Git commit
+- [x] Git push
+
 ## 🟥 PHASE 11 — MODES
 
 - [x] Classic (baseline — seeded easy/medium/hard)

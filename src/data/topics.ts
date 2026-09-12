@@ -1,0 +1,116 @@
+import type { Difficulty, GameMode } from '@/types/game';
+
+export interface LocalTopic {
+  word: string;
+  category: string;
+  difficulty: Difficulty;
+  mode: GameMode;
+}
+
+// Mirrors supabase/migrations/003_seed_topics.sql for offline pass-and-play.
+// The full content database lands in Phase 12 (content expansion).
+export const LOCAL_TOPICS: LocalTopic[] = [
+  { word: 'Pizza', category: 'food', difficulty: 'easy', mode: 'classic' },
+  { word: 'Burger', category: 'food', difficulty: 'easy', mode: 'classic' },
+  { word: 'Cricket', category: 'sports', difficulty: 'easy', mode: 'classic' },
+  { word: 'Football', category: 'sports', difficulty: 'easy', mode: 'classic' },
+  { word: 'Tea', category: 'food', difficulty: 'easy', mode: 'classic' },
+  { word: 'Coffee', category: 'food', difficulty: 'easy', mode: 'classic' },
+  { word: 'Dog', category: 'animals', difficulty: 'easy', mode: 'classic' },
+  { word: 'Cat', category: 'animals', difficulty: 'easy', mode: 'classic' },
+  { word: 'Car', category: 'travel', difficulty: 'easy', mode: 'classic' },
+  { word: 'Phone', category: 'technology', difficulty: 'easy', mode: 'classic' },
+  { word: 'Movie', category: 'entertainment', difficulty: 'easy', mode: 'classic' },
+  { word: 'Song', category: 'entertainment', difficulty: 'easy', mode: 'classic' },
+  { word: 'Birthday', category: 'daily-life', difficulty: 'easy', mode: 'classic' },
+  { word: 'Rain', category: 'nature', difficulty: 'easy', mode: 'classic' },
+  { word: 'Beach', category: 'travel', difficulty: 'easy', mode: 'classic' },
+  { word: 'Mountain', category: 'nature', difficulty: 'easy', mode: 'classic' },
+  { word: 'Train', category: 'travel', difficulty: 'easy', mode: 'classic' },
+  { word: 'Aeroplane', category: 'travel', difficulty: 'easy', mode: 'classic' },
+  { word: 'Doctor', category: 'work', difficulty: 'easy', mode: 'classic' },
+  { word: 'School', category: 'school', difficulty: 'easy', mode: 'classic' },
+  { word: 'Cappuccino', category: 'food', difficulty: 'medium', mode: 'classic' },
+  { word: 'Smartphone', category: 'technology', difficulty: 'medium', mode: 'classic' },
+  { word: 'Headphones', category: 'technology', difficulty: 'medium', mode: 'classic' },
+  { word: 'Backpack', category: 'travel', difficulty: 'medium', mode: 'classic' },
+  { word: 'Guitar', category: 'entertainment', difficulty: 'medium', mode: 'classic' },
+  { word: 'Library', category: 'school', difficulty: 'medium', mode: 'classic' },
+  { word: 'Museum', category: 'travel', difficulty: 'medium', mode: 'classic' },
+  { word: 'Picnic', category: 'daily-life', difficulty: 'medium', mode: 'classic' },
+  { word: 'Wedding', category: 'relationships', difficulty: 'medium', mode: 'classic' },
+  { word: 'Office', category: 'work', difficulty: 'medium', mode: 'classic' },
+  { word: 'Barista', category: 'food', difficulty: 'hard', mode: 'classic' },
+  { word: 'Origami', category: 'entertainment', difficulty: 'hard', mode: 'classic' },
+  { word: 'Parachute', category: 'travel', difficulty: 'hard', mode: 'classic' },
+  { word: 'Thermometer', category: 'technology', difficulty: 'hard', mode: 'classic' },
+  { word: 'Telescope', category: 'technology', difficulty: 'hard', mode: 'classic' },
+  { word: 'Waterfall', category: 'nature', difficulty: 'hard', mode: 'classic' },
+  { word: 'Lighthouse', category: 'travel', difficulty: 'hard', mode: 'classic' },
+  { word: 'Igloo', category: 'nature', difficulty: 'hard', mode: 'classic' },
+  { word: 'Encore', category: 'entertainment', difficulty: 'hard', mode: 'classic' },
+  { word: 'Espresso', category: 'food', difficulty: 'hard', mode: 'classic' },
+  { word: 'Chai', category: 'food', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Cricket', category: 'cricket', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Bollywood', category: 'bollywood', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Auto-rickshaw', category: 'travel', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Monsoon', category: 'festivals', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Diwali', category: 'festivals', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Holi', category: 'festivals', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Samosa', category: 'food', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Railway Station', category: 'travel', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Wedding', category: 'relationships', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Maggi', category: 'food', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'College', category: 'college', difficulty: 'easy', mode: 'desi-life' },
+  { word: 'Cutting Chai', category: 'food', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Local Train', category: 'travel', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Street Food', category: 'food', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Hostel', category: 'college', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Coaching Classes', category: 'college', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Traffic Jam', category: 'daily-life', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Family Function', category: 'relationships', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Metro', category: 'travel', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Board Exams', category: 'school', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Cricket World Cup', category: 'cricket', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Goa Trip', category: 'travel', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'Office Politics', category: 'work', difficulty: 'medium', mode: 'desi-life' },
+  { word: 'IRCTC', category: 'travel', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'UPI', category: 'technology', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Baraat', category: 'relationships', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Jugaad', category: 'daily-life', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Shaadi DJ', category: 'relationships', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'PG Life', category: 'college', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'CAT Exam', category: 'college', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Tiffin Dabba', category: 'food', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Rickshaw Meter', category: 'travel', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Gully Cricket', category: 'cricket', difficulty: 'hard', mode: 'desi-life' },
+  { word: 'Tatkal Booking', category: 'travel', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Sleeper Class', category: 'travel', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Platform Ticket', category: 'travel', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Share Auto', category: 'travel', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Vada Pav', category: 'food', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Jalebi Fafda', category: 'food', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Mohalla', category: 'daily-life', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Load Shedding', category: 'daily-life', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Doosra', category: 'cricket', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'Sangeet Night', category: 'relationships', difficulty: 'expert', mode: 'desi-expert' },
+  { word: 'LBW', category: 'cricket', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Googly', category: 'cricket', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Yorker', category: 'cricket', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Offside', category: 'sports', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Hat-trick', category: 'sports', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Penalty Shootout', category: 'sports', difficulty: 'expert', mode: 'hardcore' },
+  { word: 'Engagement Ceremony', category: 'relationships', difficulty: 'expert', mode: 'hardcore' },
+  { word: 'Pre-wedding Shoot', category: 'relationships', difficulty: 'hard', mode: 'hardcore' },
+  { word: 'Night Watchman', category: 'cricket', difficulty: 'expert', mode: 'hardcore' },
+  { word: 'Third Umpire', category: 'cricket', difficulty: 'hard', mode: 'hardcore' },
+];
+
+export function pickLocalSecret(mode: GameMode, difficulty: Difficulty): string {
+  const pool =
+    LOCAL_TOPICS.filter((t) => t.mode === mode && t.difficulty === difficulty).length > 0
+      ? LOCAL_TOPICS.filter((t) => t.mode === mode && t.difficulty === difficulty)
+      : LOCAL_TOPICS.filter((t) => t.mode === mode);
+  const list = pool.length > 0 ? pool : LOCAL_TOPICS.filter((t) => t.mode === 'classic');
+  return list[Math.floor(Math.random() * list.length)].word;
+}
