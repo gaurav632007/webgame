@@ -41,10 +41,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create room' }, { status: 500 });
     }
 
-    const room = result[0];
-    
-    // Add host as first player
-    const { error: playerError } = await supabase
+    const room = result[0] as { room_id: string; code: string };
+
+    // Add host as first player and return its id so the host
+    // goes straight to the lobby (no second join needed).
+    const { data: hostPlayer, error: playerError } = await supabase
       .from('players')
       .insert({
         room_id: room.room_id,
@@ -52,9 +53,11 @@ export async function POST(request: NextRequest) {
         avatar_id: data.avatarId,
         is_host: true,
         role: 'spectator',
-      });
+      })
+      .select('id')
+      .single();
 
-    if (playerError) {
+    if (playerError || !hostPlayer) {
       console.error('Add host player error:', playerError);
       // Clean up room if player creation fails
       await supabase.from('rooms').delete().eq('id', room.room_id);
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       roomId: room.room_id,
       code: room.code,
-      playerId,
+      playerId: (hostPlayer as { id: string }).id,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

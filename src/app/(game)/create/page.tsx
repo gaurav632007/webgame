@@ -18,10 +18,21 @@ export default function CreateRoomPage() {
   const [settings, setSettings] = useState(DEFAULT_ROOM_SETTINGS);
   const [isCreating, setIsCreating] = useState(false);
 
+  const nicknameError =
+    nickname.length > 0 && nickname.trim().length === 0
+      ? 'Nickname cannot be blank spaces'
+      : nickname.trim().length > 30
+        ? 'Nickname must be 30 characters or fewer'
+        : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) {
       error('Nickname required', 'Please enter a nickname to continue');
+      return;
+    }
+    if (nickname.trim().length > 30) {
+      error('Nickname too long', 'Keep it to 30 characters or fewer');
       return;
     }
     setIsCreating(true);
@@ -41,7 +52,7 @@ export default function CreateRoomPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to create room');
       success('Room created!', `Your room code is ${data.code}`);
-      router.push(`/join/${data.code}`);
+      router.push(`/lobby?room=${data.roomId}&player=${data.playerId}`);
     } catch (err) {
       error('Failed to create room', err instanceof Error ? err.message : 'Please try again');
     } finally {
@@ -71,7 +82,7 @@ export default function CreateRoomPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-3">Choose Your Avatar</label>
                   <AvatarPicker selectedId={avatarId} onSelect={setAvatarId} size="lg" />
                 </div>
-                <Input label="Your Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Enter your name" maxLength={30} autoFocus required />
+                <Input label="Your Nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Enter your name" maxLength={30} autoFocus required error={nicknameError ?? undefined} helperText={`${nickname.trim().length}/30`} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Players</label>
