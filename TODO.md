@@ -182,16 +182,18 @@
 
 ## 🟧 PHASE 10 — RESULTS
 
-- [ ] Results screen with winner banner
-- [ ] Imposter reveal
-- [ ] Player statistics
-- [ ] Rematch button (same room, new round)
-- [ ] New Room button
-- [ ] Share result (canvas-generated image)
-- [ ] Share card with QR code
-- [ ] Share actions (Download, WhatsApp, Instagram, Copy)
-- [ ] Git commit
-- [ ] Git push
+- [x] Results screen with winner banner (real engine data via /api/game/result)
+- [x] Imposter reveal + civilian grid
+- [x] Player statistics (roles, host, round/mode/difficulty context)
+- [x] Rematch button (host restarts same room; lobby auto-follows into game)
+- [x] New Room button
+- [x] Share result (canvas-generated PNG card)
+- [x] Share actions (Web Share file → text/link → download fallback)
+- [ ] QR code on share card — deferred to Phase 15 polish
+- [x] Game history persisted (game_results best-effort row)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟥 PHASE 11 — MODES
 
