@@ -288,7 +288,7 @@ BEGIN
   
   INSERT INTO rooms (code, host_id, max_players, mode, difficulty, rounds)
   VALUES (v_code, p_host_id, p_max_players, p_mode, p_difficulty, p_rounds)
-  RETURNING id, code INTO v_room_id, v_code;
+  RETURNING rooms.id, rooms.code INTO v_room_id, v_code;
   
   RETURN QUERY SELECT v_room_id, v_code;
 END;
