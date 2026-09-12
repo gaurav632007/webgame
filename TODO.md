@@ -124,15 +124,17 @@
 
 ## 🟫 PHASE 6 — CLUES
 
-- [ ] Clue UI (secret display for civilians, fake for imposter)
-- [ ] Clue input with validation
-- [ ] Turn system with current player indicator
-- [ ] Clue display with animated cards
-- [ ] Timer (30s)
-- [ ] Reactions (😂 🤔 😱 👀 🔥)
-- [ ] Animations for clue submission
-- [ ] Git commit
-- [ ] Git push
+- [x] Clue UI (secret banner for civilians, blend-in banner for imposter)
+- [x] Clue input with validation (1-200 chars, server-enforced + turn-enforced)
+- [x] Turn system with current player indicator (current_turn, auto-advance on completion)
+- [x] Clue display with animated cards (author avatar, progress x/y)
+- [x] Timer (30s, header + auto-advance)
+- [x] Reactions (laugh/think/shock/eyes/fire toggle API + live counts)
+- [x] Animations for clue submission (card entrance, turn highlight)
+- [x] Engine support (turn reset on clue entry, p_force advance, clue API)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟦 PHASE 7 — DISCUSSION
 
