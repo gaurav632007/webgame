@@ -197,16 +197,19 @@
 
 ## 🟥 PHASE 11 — MODES
 
-- [ ] Classic (baseline)
-- [ ] Desi Life (200+ Indian topics)
-- [ ] Hardcore (similar-word logic)
-- [ ] Chaos (modifier system)
-- [ ] Image Clue (asset pipeline)
-- [ ] Friends Custom (topic builder)
-- [ ] Desi Expert (100+ ultra-specific topics)
-- [ ] AI Chaos (later)
-- [ ] Git commit after each stable mode
-- [ ] Git push after each stable mode
+- [x] Classic (baseline — seeded easy/medium/hard)
+- [x] Desi Life (seeded easy/medium/hard)
+- [x] Hardcore (seeded tricky topics)
+- [x] Desi Expert (seeded ultra-specific topics)
+- [ ] Chaos (modifier system) — SOON badge, planned Phase 11+
+- [ ] Image Clue (asset pipeline) — SOON badge, planned Phase 27
+- [ ] Friends Custom (topic builder) — SOON badge, planned Phase 26
+- [ ] AI Chaos (later) — SOON badge, planned Phase 28
+- [x] Unseeded modes disabled in UI (create + lobby + landing) with SOON badges
+- [x] Server enforces playable modes (create API zod enum)
+- [x] Lint clean + production build green
+- [x] Git commit after each stable mode
+- [x] Git push after each stable mode
 
 ## 🟪 PHASE 12 — CONTENT DATABASE
 

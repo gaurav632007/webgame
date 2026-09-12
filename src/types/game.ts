@@ -124,15 +124,17 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   rounds: 3,
 };
 
-export const GAME_MODES: { value: GameMode; label: string; description: string; icon: string }[] = [
-  { value: 'classic', label: 'Classic', description: 'Standard Imposter game', icon: '🔍' },
-  { value: 'desi-life', label: 'Desi Life', description: 'Indian life topics', icon: '🇮🇳' },
-  { value: 'hardcore', label: 'Hardcore', description: 'Difficult & similar topics', icon: '🧠' },
-  { value: 'chaos', label: 'Chaos', description: 'Random rule twists', icon: '🤪' },
-  { value: 'image-clue', label: 'Image Clue', description: 'Picture-based clues', icon: '🖼️' },
-  { value: 'friends-custom', label: 'Friends Custom', description: 'Your own topic pack', icon: '👥' },
-  { value: 'desi-expert', label: 'Desi Expert', description: 'Ultra-specific Indian topics', icon: '🎭' },
-  { value: 'ai-chaos', label: 'AI Chaos', description: 'AI-generated scenarios', icon: '🤖' },
+export const PLAYABLE_MODES: GameMode[] = ['classic', 'desi-life', 'hardcore', 'desi-expert'];
+
+export const GAME_MODES: { value: GameMode; label: string; description: string; icon: string; playable: boolean }[] = [
+  { value: 'classic', label: 'Classic', description: 'Standard Imposter game', icon: '🔍', playable: true },
+  { value: 'desi-life', label: 'Desi Life', description: 'Indian life topics', icon: '🇮🇳', playable: true },
+  { value: 'hardcore', label: 'Hardcore', description: 'Difficult & similar topics', icon: '🧠', playable: true },
+  { value: 'desi-expert', label: 'Desi Expert', description: 'Ultra-specific Indian topics', icon: '🎭', playable: true },
+  { value: 'chaos', label: 'Chaos', description: 'Random rule twists — coming soon', icon: '🤪', playable: false },
+  { value: 'image-clue', label: 'Image Clue', description: 'Picture-based clues — coming soon', icon: '🖼️', playable: false },
+  { value: 'friends-custom', label: 'Friends Custom', description: 'Your own topic pack — coming soon', icon: '👥', playable: false },
+  { value: 'ai-chaos', label: 'AI Chaos', description: 'AI-generated scenarios — coming soon', icon: '🤖', playable: false },
 ];
 
 export const DIFFICULTIES: { value: Difficulty; label: string; description: string; color: string }[] = [

@@ -97,12 +97,12 @@ const steps = [
 ];
 
 const modes = [
-  { name: 'Classic', desc: 'Standard Imposter game', color: 'from-orange-400 to-pink-500' },
-  { name: 'Desi Life', desc: 'Chai, cricket, Bollywood...', color: 'from-amber-400 to-orange-500' },
-  { name: 'Hardcore', desc: 'Similar, tricky topics', color: 'from-red-400 to-pink-500' },
-  { name: 'Chaos', desc: 'Random rule twists', color: 'from-purple-400 to-pink-500' },
-  { name: 'Image Clue', desc: 'Picture-based clues', color: 'from-teal-400 to-cyan-500' },
-  { name: 'Custom', desc: 'Your own topic packs', color: 'from-blue-400 to-indigo-500' },
+  { name: 'Classic', desc: 'Standard Imposter game', color: 'from-orange-400 to-pink-500', soon: false },
+  { name: 'Desi Life', desc: 'Chai, cricket, Bollywood...', color: 'from-amber-400 to-orange-500', soon: false },
+  { name: 'Hardcore', desc: 'Similar, tricky topics', color: 'from-red-400 to-pink-500', soon: false },
+  { name: 'Desi Expert', desc: 'Ultra-specific Indian topics', color: 'from-purple-400 to-pink-500', soon: false },
+  { name: 'Chaos', desc: 'Random rule twists', color: 'from-teal-400 to-cyan-500', soon: true },
+  { name: 'Custom', desc: 'Your own topic packs', color: 'from-blue-400 to-indigo-500', soon: true },
 ];
 
 const jsonLd = {
@@ -261,10 +261,13 @@ export default function LandingPage() {
             >
               {modes.map((mode) => (
                 <motion.div key={mode.name} variants={staggerItem}>
-                  <Card className="h-full card-elevated hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 group">
+                  <Card className={`h-full card-elevated hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 group ${mode.soon ? 'opacity-80' : ''}`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${mode.color} group-hover:scale-110 transition-transform`} aria-hidden="true" />
+                        {mode.soon && (
+                          <span className="text-xs font-bold text-purple-600 bg-purple-100 rounded-full px-2.5 py-1">SOON</span>
+                        )}
                       </div>
                       <h3 className="font-display text-xl font-bold text-gray-900 mb-2">{mode.name}</h3>
                       <p className="text-gray-600">{mode.desc}</p>
