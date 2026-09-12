@@ -166,17 +166,19 @@
 
 ## 🟨 PHASE 9 — REVEAL
 
-- [ ] Suspense animation (screen darken)
-- [ ] "THE IMPOSTER WAS..." typewriter
-- [ ] Dramatic pause
-- [ ] Imposter card flip reveal
-- [ ] Winner calculation
-- [ ] Victory/Defeat animation
-- [ ] Confetti explosion
-- [ ] Sound effects
-- [ ] Auto-advance to results
-- [ ] Git commit
-- [ ] Git push
+- [x] Suspense animation (screen darken)
+- [x] "THE IMPOSTER WAS..." typewriter
+- [x] Dramatic pause
+- [x] Imposter card flip reveal
+- [x] Winner calculation (engine tally, shown per round)
+- [x] Victory/Defeat banner
+- [x] Confetti explosion (CSS, civilians win only)
+- [ ] Sound effects — deferred to Phase 14
+- [x] Auto-advance to next round / game_over (host timer driver)
+- [x] Reduced-motion path (final state immediately, no confetti)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟧 PHASE 10 — RESULTS
 

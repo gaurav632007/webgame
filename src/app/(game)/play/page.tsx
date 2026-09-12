@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GameHeader, Timer, Card, CardContent, PhaseBadge, Button, Avatar, Modal } from '@/components/ui';
@@ -577,22 +577,121 @@ function VotingScreen({
   );
 }
 
+const CONFETTI_COLORS = ['#f97316', '#ec4899', '#a855f7', '#3b82f6', '#14b8a6', '#eab308', '#22c55e'];
+
+function ConfettiBurst() {
+  const reduceMotion = useReducedMotion();
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 48 }).map((_, i) => ({
+        id: i,
+        left: (i * 37) % 100,
+        delay: (i % 12) * 0.08,
+        duration: 2 + ((i * 7) % 10) / 8,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 6 + ((i * 13) % 8),
+        round: i % 3 === 0,
+      })),
+    [],
+  );
+  if (reduceMotion) return null;
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          initial={{ y: '-5vh', x: 0, opacity: 1, rotate: 0 }}
+          animate={{ y: '105vh', x: (p.id % 2 === 0 ? 60 : -60), opacity: 0.9, rotate: 540 }}
+          transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
+          className="absolute top-0"
+          style={{ left: `${p.left}%`, width: p.size, height: p.size * (p.round ? 1 : 0.5), backgroundColor: p.color, borderRadius: p.round ? '50%' : 2 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function useTypewriter(text: string, start: boolean, speedMs = 55): string {
+  const [shown, setShown] = useState('');
+  useEffect(() => {
+    if (!start) return;
+    let i = 0;
+    const t = setInterval(() => {
+      i += 1;
+      setShown(text.slice(0, i));
+      if (i >= text.length) clearInterval(t);
+    }, speedMs);
+    return () => clearInterval(t);
+  }, [text, start, speedMs]);
+  return shown;
+}
+
 function ResultScreen({ winner, imposters, round, final }: { winner: string; imposters: Player[]; round: number; final?: boolean }) {
   const civiliansWon = winner === 'civilians';
+  const reduceMotion = useReducedMotion();
+  const [stage, setStage] = useState(reduceMotion ? 3 : 0);
+  const suspenseText = useTypewriter('THE IMPOSTER WAS...', stage === 0 && !reduceMotion);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const timers = [
+      setTimeout(() => setStage(1), 1400), // suspense pause
+      setTimeout(() => setStage(2), 2300), // imposter flip
+      setTimeout(() => setStage(3), 3400), // outcome banner
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [reduceMotion]);
+
+  const names = imposters.length > 0 ? imposters.map((p) => p.nickname).join(' & ') : '???';
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-      <h2 className="font-display text-3xl font-bold text-gray-900 mb-2">{civiliansWon ? 'IMPOSTER CAUGHT!' : 'IMPOSTER ESCAPED!'}</h2>
-      <p className="text-gray-600 mb-6">{civiliansWon ? 'Civilians win this round!' : 'Imposter wins this round!'} (Round {round}{final ? ', final' : ''})</p>
-      {imposters.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-4">
-          {imposters.map((p) => (
-            <div key={p.id} className="text-center">
-              <Avatar avatarId={p.avatar_id} size="xl" nickname={p.nickname} role="imposter" />
-              <p className="mt-2 font-medium text-gray-900">{p.nickname}</p>
+    <div className="text-center" role="status" aria-live="polite">
+      <AnimatePresence>{stage < 3 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.55 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-10" aria-hidden="true" />}</AnimatePresence>
+
+      <div className="relative z-20">
+        {stage <= 1 && (
+          <div className="py-16">
+            <p className="font-display text-2xl sm:text-4xl font-bold tracking-widest text-white min-h-[3rem]">
+              {suspenseText}
+              <span className="animate-pulse">|</span>
+            </p>
+            {stage === 1 && <p className="text-white/60 mt-4 text-sm">...</p>}
+          </div>
+        )}
+
+        {stage >= 2 && (
+          <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.6, ease: 'easeOut' }} style={{ transformStyle: 'preserve-3d' }}>
+            <p className="text-sm font-semibold text-white/70 mb-3">THE IMPOSTER WAS</p>
+            <div className="flex flex-wrap justify-center gap-4 mb-4">
+              {imposters.length > 0 ? (
+                imposters.map((p) => (
+                  <div key={p.id} className="text-center">
+                    <Avatar avatarId={p.avatar_id} size="2xl" nickname={p.nickname} role="imposter" />
+                    <p className="mt-2 font-display text-2xl font-bold text-white">{p.nickname}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="font-display text-2xl font-bold text-white">{names}</p>
+              )}
             </div>
-          ))}
-        </div>
-      )}
-    </motion.div>
+          </motion.div>
+        )}
+
+        {stage >= 3 && (
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring' as const, stiffness: 200, damping: 16 }}>
+            <h2 className={`font-display text-4xl sm:text-5xl font-bold mb-2 ${civiliansWon ? 'text-green-400' : 'text-purple-400'}`}>
+              {civiliansWon ? 'IMPOSTER CAUGHT!' : 'IMPOSTER ESCAPED!'}
+            </h2>
+            <p className="text-white/80">
+              {civiliansWon ? 'Civilians take the round!' : 'The Imposter fooled everyone!'} (Round {round}
+              {final ? ', final' : ''})
+            </p>
+          </motion.div>
+        )}
+      </div>
+
+      {stage >= 3 && civiliansWon && <ConfettiBurst />}
+      {stage >= 3 && <p className="relative z-20 text-white/50 text-sm mt-8">{final ? 'Final scores next…' : 'Next round starting…'}</p>}
+    </div>
   );
 }
