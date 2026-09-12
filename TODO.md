@@ -221,9 +221,10 @@
 - [x] Vote breakdown + category + final-guess banner on results
 - [x] Offline rework (spoken clues, no vote screen, pardafaash reveal + outcome buttons + confetti)
 - [x] Shared Confetti component
-- [ ] Run 006 migration on Supabase (needs user) → then extended playtest
-- [ ] Git commit
-- [ ] Git push
+- [x] Ran 006 migration + extended playtest: 19/19 (hints, illegal-clue ban, call-vote, steal +5, deadlock revote, nightmare, expert blind)
+- [x] Lint clean + production build green
+- [x] Git commit
+- [x] Git push
 
 ## 🟥 PHASE 11 — MODES
 
