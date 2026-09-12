@@ -1,12 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Input, Card, CardContent, AvatarPicker } from '@/components/ui';
-import { GAME_MODES, DIFFICULTIES, DEFAULT_ROOM_SETTINGS } from '@/types/game';
+import { GAME_MODES, DIFFICULTIES, DEFAULT_ROOM_SETTINGS, categoryIcon, prettyCategory } from '@/types/game';
 import { useToastHelpers } from '@/components/ui/Toast';
+
+interface DatasetInfo {
+  category: string;
+  count: number;
+  examples: string[];
+}
 
 const patternSvg = `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23f97316' fillOpacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E`;
 
@@ -17,6 +23,23 @@ export default function CreateRoomPage() {
   const [avatarId, setAvatarId] = useState(1);
   const [settings, setSettings] = useState(DEFAULT_ROOM_SETTINGS);
   const [isCreating, setIsCreating] = useState(false);
+  const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
+
+  useEffect(() => {
+    fetch('/api/topics/datasets')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.datasets) setDatasets(d.datasets as DatasetInfo[]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleDataset = (category: string) => {
+    setSettings((s) => ({
+      ...s,
+      datasets: s.datasets.includes(category) ? s.datasets.filter((c) => c !== category) : [...s.datasets, category],
+    }));
+  };
 
   const nicknameError =
     nickname.length > 0 && nickname.trim().length === 0
@@ -46,6 +69,7 @@ export default function CreateRoomPage() {
           mode: settings.mode,
           difficulty: settings.difficulty,
           rounds: settings.rounds,
+          datasets: settings.datasets,
           avatarId,
         }),
       });
@@ -127,6 +151,45 @@ export default function CreateRoomPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Word Packs (datasets)</label>
+                    {settings.datasets.length > 0 && (
+                      <button type="button" onClick={() => setSettings({ ...settings, datasets: [] })} className="text-xs font-medium text-orange-600 hover:underline">
+                        Mixed (clear)
+                      </button>
+                    )}
+                  </div>
+                  {datasets.length === 0 ? (
+                    <p className="text-sm text-gray-500">Loading packs... (Mixed by default)</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                      {datasets.map((d) => {
+                        const active = settings.datasets.includes(d.category);
+                        return (
+                          <motion.button
+                            key={d.category}
+                            type="button"
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => toggleDataset(d.category)}
+                            aria-pressed={active}
+                            title={d.examples.join(', ')}
+                            className={`p-3 rounded-xl border-2 text-left transition-all duration-200 ${active ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-300'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xl" aria-hidden="true">{categoryIcon(d.category)}</span>
+                              {active && <span className="text-orange-600 font-bold" aria-hidden="true">✓</span>}
+                            </div>
+                            <div className="text-xs font-bold text-gray-800 mt-1">{prettyCategory(d.category)}</div>
+                            <div className="text-[11px] text-gray-500">{d.count} words · e.g. {d.examples.slice(0, 2).join(', ')}</div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    {settings.datasets.length === 0 ? 'Mixed: words from every pack.' : `${settings.datasets.length} pack${settings.datasets.length > 1 ? 's' : ''} selected.`}
+                  </p>
                 </div>
                 <Button type="submit" className="w-full" size="lg" loading={isCreating}>
                   CREATE ROOM

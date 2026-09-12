@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { Button, Card, CardContent, Avatar } from '@/components/ui';
 import { ConfettiBurst } from '@/components/game/Confetti';
 import { ModeBanner } from '@/components/game/ModeBanner';
-import { GAME_MODES, DIFFICULTIES, type Difficulty, type GameMode } from '@/types/game';
-import { pickLocalSecret } from '@/data/topics';
+import { GAME_MODES, DIFFICULTIES, categoryIcon, prettyCategory, type Difficulty, type GameMode } from '@/types/game';
+import { localCategories, pickLocalSecret } from '@/data/topics';
 
 type Stage = 'setup' | 'reveal' | 'discuss' | 'vote' | 'result';
 
@@ -42,6 +42,7 @@ export default function OfflinePage() {
   const [mode, setMode] = useState<GameMode>('desi-life');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [players, setPlayers] = useState<OfflinePlayer[]>([]);
+  const [packs, setPacks] = useState<string[]>([]);
   const [secret, setSecret] = useState('');
   const [imposters, setImposters] = useState<number[]>([]);
   const [step, setStep] = useState(0);
@@ -59,7 +60,7 @@ export default function OfflinePage() {
     const shuffled = shuffle(idx);
     const impCount = roster.length >= 8 ? 2 : 1;
     setImposters(shuffled.slice(0, impCount));
-    setSecret(pickLocalSecret(mode, difficulty));
+    setSecret(pickLocalSecret(mode, difficulty, packs));
     setStep(0);
     setRevealed(false);
     setVotes(new Array(roster.length).fill(-1));
@@ -203,6 +204,25 @@ export default function OfflinePage() {
                             {d.label}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-200 mb-2">Word Packs {packs.length === 0 && <span className="font-normal text-slate-400">(Mixed)</span>}</label>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                        {localCategories().map((c) => {
+                          const active = packs.includes(c.category);
+                          return (
+                            <button
+                              key={c.category}
+                              type="button"
+                              aria-pressed={active}
+                              title={`${c.count} words: ${c.examples.join(', ')}`}
+                              onClick={() => setPacks(active ? packs.filter((x) => x !== c.category) : [...packs, c.category])}
+                              className={`px-2.5 py-1.5 rounded-xl border-2 text-xs font-bold transition-all ${active ? 'border-amber-400 bg-amber-400/10 text-amber-200' : 'border-white/15 text-slate-300 hover:border-white/40'}`}>
+                              {categoryIcon(c.category)} {prettyCategory(c.category)}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <Button size="lg" className="w-full" disabled={validNames.length < 4 || dupes} onClick={handleSetup}>

@@ -1,6 +1,17 @@
-export type GameMode = 'classic' | 'desi-life' | 'hardcore' | 'chaos' | 'image-clue' | 'friends-custom' | 'desi-expert' | 'ai-chaos';
+export type GameMode =
+  | 'classic'
+  | 'desi-life'
+  | 'hardcore'
+  | 'chaos'
+  | 'image-clue'
+  | 'friends-custom'
+  | 'desi-expert'
+  | 'ai-chaos'
+  | 'blind-bluff'
+  | 'quick-fire'
+  | 'double-imposter';
 
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'nightmare';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 export type GamePhase = 
   | 'lobby' 
@@ -115,6 +126,8 @@ export interface RoomSettings {
   mode: GameMode;
   difficulty: Difficulty;
   rounds: number;
+  /** Category packs. Empty = mixed (all categories). */
+  datasets: string[];
 }
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
@@ -122,7 +135,37 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   mode: 'classic',
   difficulty: 'medium',
   rounds: 3,
+  datasets: [],
 };
+
+export const CATEGORY_ICONS: Record<string, string> = {
+  food: '🍛',
+  sports: '🏏',
+  animals: '🐾',
+  travel: '🚆',
+  technology: '💻',
+  entertainment: '🎬',
+  'daily-life': '🇮🇳',
+  nature: '🏔️',
+  work: '💼',
+  school: '🎓',
+  relationships: '💍',
+  cricket: '🏏',
+  bollywood: '🎬',
+  festivals: '🎉',
+  college: '🎓',
+};
+
+export function categoryIcon(category: string): string {
+  return CATEGORY_ICONS[category.toLowerCase()] ?? '📦';
+}
+
+export function prettyCategory(category: string): string {
+  return category
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
 export const PLAYABLE_MODES: GameMode[] = ['classic', 'desi-life', 'hardcore', 'desi-expert'];
 
@@ -131,6 +174,9 @@ export const GAME_MODES: { value: GameMode; label: string; description: string; 
   { value: 'desi-life', label: 'Desi Life', description: 'Indian life topics', icon: '🇮🇳', playable: true },
   { value: 'hardcore', label: 'Hardcore', description: 'Difficult & similar topics', icon: '🧠', playable: true },
   { value: 'desi-expert', label: 'Desi Expert', description: 'Ultra-specific Indian topics', icon: '🎭', playable: true },
+  { value: 'blind-bluff', label: 'Blind Bluff', description: 'Your own word may be a lie — coming soon', icon: '🙈', playable: false },
+  { value: 'quick-fire', label: 'Quick Fire', description: 'Think fast, bluff faster — coming soon', icon: '⚡', playable: false },
+  { value: 'double-imposter', label: 'Double Imposter', description: 'Two liars, one secret — coming soon', icon: '👥', playable: false },
   { value: 'chaos', label: 'Chaos', description: 'Random rule twists — coming soon', icon: '🤪', playable: false },
   { value: 'image-clue', label: 'Image Clue', description: 'Picture-based clues — coming soon', icon: '🖼️', playable: false },
   { value: 'friends-custom', label: 'Friends Custom', description: 'Your own topic pack — coming soon', icon: '👥', playable: false },
@@ -141,17 +187,15 @@ export const DIFFICULTIES: { value: Difficulty; label: string; description: stri
   { value: 'easy', label: 'Easy', description: 'Obvious topics for beginners', color: 'text-green-600' },
   { value: 'medium', label: 'Medium', description: 'Normal gameplay', color: 'text-yellow-600' },
   { value: 'hard', label: 'Hard', description: 'Similar concepts', color: 'text-orange-600' },
-  { value: 'expert', label: 'Expert', description: 'Very subtle concepts', color: 'text-purple-600' },
-  { value: 'nightmare', label: 'Nightmare', description: 'One-word clues, no mercy', color: 'text-red-600' },
+  { value: 'expert', label: 'Expert', description: 'Similar word, no warning, one-word clues', color: 'text-purple-600' },
 ];
 
-/** Phase timers by difficulty: clue / discussion / voting seconds. */
+/** Phase timers by difficulty: clue / discussion / voting seconds (spec timers). */
 export const DIFFICULTY_TIMERS: Record<Difficulty, { clue: number; discussion: number; voting: number; finalGuess: number }> = {
-  easy: { clue: 60, discussion: 90, voting: 30, finalGuess: 20 },
-  medium: { clue: 45, discussion: 60, voting: 25, finalGuess: 15 },
-  hard: { clue: 30, discussion: 45, voting: 20, finalGuess: 10 },
-  expert: { clue: 20, discussion: 30, voting: 15, finalGuess: 10 },
-  nightmare: { clue: 15, discussion: 20, voting: 10, finalGuess: 8 },
+  easy: { clue: 30, discussion: 60, voting: 20, finalGuess: 20 },
+  medium: { clue: 20, discussion: 60, voting: 20, finalGuess: 15 },
+  hard: { clue: 15, discussion: 45, voting: 15, finalGuess: 12 },
+  expert: { clue: 10, discussion: 30, voting: 12, finalGuess: 10 },
 };
 
 export const PHASE_TIMERS: Record<GamePhase, number> = {

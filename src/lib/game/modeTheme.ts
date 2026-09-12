@@ -40,6 +40,27 @@ export const MODE_THEME: Record<GameMode, ModeTheme> = {
     gradient: 'from-purple-500 to-indigo-700',
     pill: 'bg-purple-100 text-purple-800',
   },
+  'blind-bluff': {
+    label: 'Blind Bluff',
+    tagline: 'Your own word may be a lie. Bharosa mat karo!',
+    emoji: '🙈',
+    gradient: 'from-slate-600 to-stone-900',
+    pill: 'bg-slate-200 text-slate-800',
+  },
+  'quick-fire': {
+    label: 'Quick Fire',
+    tagline: 'Think fast. Bluff faster. Saans mat lo!',
+    emoji: '⚡',
+    gradient: 'from-yellow-500 to-red-600',
+    pill: 'bg-yellow-100 text-yellow-800',
+  },
+  'double-imposter': {
+    label: 'Double Imposter',
+    tagline: 'Two liars. One secret. Total chaos.',
+    emoji: '👥',
+    gradient: 'from-rose-500 to-purple-700',
+    pill: 'bg-rose-100 text-rose-800',
+  },
   chaos: {
     label: 'Chaos',
     tagline: 'Normal rules? Bhool jao!',
@@ -80,8 +101,7 @@ export const DIFFICULTY_THEME: Record<string, DifficultyTheme> = {
   easy: { label: 'Easy', sub: 'Aram se khelo', pill: 'bg-green-100 text-green-800' },
   medium: { label: 'Medium', sub: 'Thoda tez', pill: 'bg-yellow-100 text-yellow-800' },
   hard: { label: 'Hard', sub: 'Dimaag lagao', pill: 'bg-orange-100 text-orange-800' },
-  expert: { label: 'Expert', sub: 'Asli khiladi', pill: 'bg-purple-100 text-purple-800' },
-  nightmare: { label: 'Nightmare', sub: 'Kya re bhai?!', pill: 'bg-red-100 text-red-800' },
+  expert: { label: 'Expert', sub: 'One word. No mercy.', pill: 'bg-purple-100 text-purple-800' },
 };
 
 export function modeTheme(mode: string): ModeTheme {

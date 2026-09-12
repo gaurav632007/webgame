@@ -43,13 +43,18 @@ export function decryptSecret(stored: string | null): string | null {
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** Re-encrypts a round's secret in place. No-op if already sealed. */
+/** Re-encrypts a round's secret (+ blind alternate word) in place. No-op if sealed. */
 export async function sealRoundSecret(supabase: SupabaseClient, roomId: string): Promise<void> {
   try {
-    const { data } = await supabase.from('game_state').select('secret').eq('room_id', roomId).single();
-    const row = data as unknown as { secret: string | null } | null;
-    if (!row?.secret || row.secret.startsWith(PREFIX)) return;
-    await supabase.from('game_state').update({ secret: encryptSecret(row.secret) }).eq('room_id', roomId);
+    const { data } = await supabase.from('game_state').select('secret, imposter_word').eq('room_id', roomId).single();
+    const row = data as unknown as { secret: string | null; imposter_word: string | null } | null;
+    if (!row) return;
+    const patch: Record<string, string> = {};
+    if (row.secret && !row.secret.startsWith(PREFIX)) patch.secret = encryptSecret(row.secret);
+    if (row.imposter_word && !row.imposter_word.startsWith(PREFIX)) patch.imposter_word = encryptSecret(row.imposter_word);
+    if (Object.keys(patch).length > 0) {
+      await supabase.from('game_state').update(patch).eq('room_id', roomId);
+    }
   } catch (err) {
     console.error('Seal round secret error:', err);
   }
