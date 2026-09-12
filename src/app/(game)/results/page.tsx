@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Button, Card, CardContent, Avatar, RoleBadge } from '@/components/ui';
+import { ModeBanner } from '@/components/game/ModeBanner';
 import { useToastHelpers } from '@/components/ui/Toast';
 import { downloadBlob, drawResultCard } from '@/lib/share';
 
@@ -173,6 +174,7 @@ function ResultsContent() {
       <div className="absolute inset-0" style={{ backgroundImage: `url(${patternSvg})` }} />
       <main className="relative px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
+          <ModeBanner mode={data.mode} difficulty={data.difficulty} round={data.round} rounds={data.rounds} />
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center mb-8">
             <h1 className="font-display text-4xl font-bold text-gray-900 mb-2">
               {civiliansWon ? 'IMPOSTER CAUGHT!' : 'IMPOSTER ESCAPED!'}

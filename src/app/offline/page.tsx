@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Button, Card, CardContent, Avatar } from '@/components/ui';
 import { ConfettiBurst } from '@/components/game/Confetti';
+import { ModeBanner } from '@/components/game/ModeBanner';
 import { GAME_MODES, DIFFICULTIES, type Difficulty, type GameMode } from '@/types/game';
 import { pickLocalSecret } from '@/data/topics';
 
-type Stage = 'setup' | 'reveal' | 'clue' | 'discuss' | 'result';
+type Stage = 'setup' | 'reveal' | 'discuss' | 'vote' | 'result';
 
 interface OfflinePlayer {
   name: string;
@@ -46,6 +47,7 @@ export default function OfflinePage() {
   const [step, setStep] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [discussLeft, setDiscussLeft] = useState(60);
+  const [votes, setVotes] = useState<number[]>([]);
   const [score, setScore] = useState({ civilians: 0, imposters: 0 });
   const [outcome, setOutcome] = useState<'civilians' | 'imposter' | null>(null);
   const [showImposter, setShowImposter] = useState(false);
@@ -60,6 +62,7 @@ export default function OfflinePage() {
     setSecret(pickLocalSecret(mode, difficulty));
     setStep(0);
     setRevealed(false);
+    setVotes(new Array(roster.length).fill(-1));
     setOutcome(null);
     setShowImposter(false);
     setStage('reveal');
@@ -87,9 +90,39 @@ export default function OfflinePage() {
     return () => clearTimeout(t);
   }, [stage, discussLeft]);
 
-  const recordOutcome = (w: 'civilians' | 'imposter') => {
+  // Offline scoring: caught imposter → every civilian +3; survived → imposter +5.
+  const castVote = (voterIdx: number, targetIdx: number) => {
+    const next = [...votes];
+    next[voterIdx] = targetIdx;
+    setVotes(next);
+    if (voterIdx + 1 < players.length) {
+      setStep(voterIdx + 1);
+      return;
+    }
+    // All votes in: most-voted is accused. Tie = imposter bach gaya.
+    const counts = new Map<number, number>();
+    next.forEach((v) => counts.set(v, (counts.get(v) ?? 0) + 1));
+    let accused = -1;
+    let top = 0;
+    let tied = false;
+    counts.forEach((c, idx) => {
+      if (c > top) {
+        top = c;
+        accused = idx;
+        tied = false;
+      } else if (c === top) {
+        tied = true;
+      }
+    });
+    const caught = !tied && imposters.includes(accused);
+    const w = caught ? 'civilians' : 'imposter';
     setOutcome(w);
-    setScore((s) => (w === 'civilians' ? { ...s, civilians: s.civilians + 1 } : { ...s, imposters: s.imposters + 1 }));
+    if (caught) {
+      setScore((s) => ({ ...s, civilians: s.civilians + 3 }));
+    } else {
+      setScore((s) => ({ ...s, imposters: s.imposters + 5 }));
+    }
+    setStage('result');
   };
 
   const rematch = () => {
@@ -110,6 +143,7 @@ export default function OfflinePage() {
 
       <main className="relative px-4 pb-12 sm:px-6">
         <div className="max-w-3xl mx-auto">
+          {stage !== 'setup' && <ModeBanner mode={mode} difficulty={difficulty} className="max-w-md mx-auto" />}
           <AnimatePresence mode="wait">
             {stage === 'setup' && (
               <motion.div key="setup" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -210,50 +244,20 @@ export default function OfflinePage() {
                     else {
                       setStep(0);
                       setDiscussLeft(60);
-                      setStage('clue');
+                      setStage('discuss');
                     }
                   }}>
-                  {step + 1 < players.length ? 'CHHUPAO & PASS KARO →' : 'SAB READY? CLUES SHURU!'}
+                  {step + 1 < players.length ? 'CHHUPAO & PASS KARO →' : 'SAB READY? CHARCHA SHURU!'}
                 </Button>
                 {!revealed && <p className="text-slate-500 text-sm mt-3">Pehle apna role dekho, phir pass karo.</p>}
-              </motion.div>
-            )}
-
-            {stage === 'clue' && (
-              <motion.div key={`clue-${step}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                <p className="text-slate-400 text-sm mb-1">Clue {step + 1} of {players.length} — zor se bolo, likhna nahi hai!</p>
-                <h2 className="font-display text-4xl font-black text-white mb-2">{players[step].name}</h2>
-                <p className="text-amber-200 mb-2">Apna clue SABKO SUNAO 🗣️</p>
-                <p className="text-slate-400 text-sm mb-6">Baaki sab dhyaan se suno. Suspect list dimaag mein banao.</p>
-                <div className="flex justify-center gap-1.5 mb-6" aria-hidden="true">
-                  {players.map((_, i) => (
-                    <span key={i} className={`w-3 h-3 rounded-full ${i <= step ? 'bg-amber-400' : 'bg-white/15'}`} />
-                  ))}
-                </div>
-                <Card className="bg-white/5 border-white/10 backdrop-blur max-w-md mx-auto">
-                  <CardContent className="p-6">
-                    <p className="text-slate-300 text-sm mb-4">Clue bola? Sabne suna? Phir button dabao — wapas nahi hoga!</p>
-                    <Button size="lg" className="w-full"
-                      onClick={() => {
-                        if (step + 1 < players.length) {
-                          setStep(step + 1);
-                        } else {
-                          setStep(0);
-                          setDiscussLeft(60);
-                          setStage('discuss');
-                        }
-                      }}>
-                      CLUE BOLA, NEXT! →
-                    </Button>
-                  </CardContent>
-                </Card>
               </motion.div>
             )}
 
             {stage === 'discuss' && (
               <motion.div key="discuss" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
                 <h2 className="font-display text-3xl font-black text-amber-300 mb-1">CHARCHA TIME! ☕</h2>
-                <p className="text-slate-300 mb-6">Behes karo, ilzaam lagao, jhooth pakdo. Chillao mat!</p>
+                <p className="text-slate-300 mb-2">Clues mooh se bolo, behes karo, ilzaam lagao. Likhna kuch nahi!</p>
+                <p className="text-amber-200/80 text-sm mb-6">Shak pak gaya? Discussion khatam karke vote out karo.</p>
                 <div className="font-mono font-bold text-7xl text-white mb-6 tabular-nums">
                   {Math.floor(discussLeft / 60)}:{String(discussLeft % 60).padStart(2, '0')}
                 </div>
@@ -262,9 +266,30 @@ export default function OfflinePage() {
                     <span key={i} className="text-xs font-bold text-slate-300 bg-white/10 rounded-full px-3 py-1">{p.name}</span>
                   ))}
                 </div>
-                <Button size="lg" className="min-w-[240px]" onClick={() => setStage('result')}>
-                  {discussLeft > 0 ? 'SKIP KARO, REVEAL KARO!' : 'TIME KHATAM — REVEAL KARO!'}
+                <Button size="lg" className="min-w-[240px]" onClick={() => { setVotes(new Array(players.length).fill(-1)); setStep(0); setStage('vote'); }}>
+                  {discussLeft > 0 ? 'CHARCHA OVER — VOTE KARO!' : 'TIME KHATAM — VOTE KARO!'}
                 </Button>
+              </motion.div>
+            )}
+
+            {stage === 'vote' && (
+              <motion.div key={`vote-${step}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+                <p className="text-slate-400 text-sm mb-1">Vote {votes.filter((v) => v >= 0).length + 1} of {players.length} — ek tap, no bakwaas!</p>
+                <h2 className="font-display text-3xl font-black text-white mb-1">{players[step].name}</h2>
+                <p className="text-amber-200 mb-5">Imposter kaun? Baaki sab door dekho! 👀</p>
+                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                  {players.map((p, i) =>
+                    i === step ? null : (
+                      <button key={i} onClick={() => castVote(step, i)}
+                        className="p-4 rounded-2xl bg-white/5 border-2 border-white/15 hover:border-amber-400 active:scale-95 transition-all">
+                        <div className={`w-12 h-12 mx-auto rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i % 8]} flex items-center justify-center text-white font-bold mb-1`}>
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <p className="font-bold text-white text-sm truncate">{p.name}</p>
+                      </button>
+                    ),
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -292,27 +317,20 @@ export default function OfflinePage() {
                       </div>
                     </motion.div>
                     <p className="text-slate-300 mb-5">Secret tha: <strong className="text-amber-300">{secret}</strong></p>
-                    {!outcome ? (
-                      <div className="max-w-md mx-auto">
-                        <p className="text-slate-200 font-bold mb-3">Toh batao — crew ne pakad liya tha ya nahi?</p>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                          <Button size="lg" className="flex-1" onClick={() => recordOutcome('civilians')}>PAKAD LIYA! (+2)</Button>
-                          <Button size="lg" variant="secondary" className="flex-1" onClick={() => recordOutcome('imposter')}>BACH GAYA! (+3)</Button>
-                        </div>
+                    <div>
+                      {outcome === 'civilians' && <ConfettiBurst />}
+                      <h2 className={`font-display text-4xl font-black mb-2 ${outcome === 'civilians' ? 'text-green-400' : 'text-purple-300'}`}>
+                        {outcome === 'civilians' ? 'PAKDA GAYA! 🎉' : 'BACH GAYA! 😈'}
+                      </h2>
+                      <p className="text-slate-400 text-sm mb-1">
+                        {outcome === 'civilians' ? 'Crew ne sahi pakda — sabko +3!' : 'Imposter bach gaya — use +5!'}
+                      </p>
+                      <p className="font-bold text-slate-200 mb-5">Session score — Civilians {score.civilians} : {score.imposters} Imposters</p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button size="lg" onClick={rematch}>REMATCH · EK AUR!</Button>
+                        <Button size="lg" variant="outline" className="border-slate-500 text-slate-200" onClick={() => setStage('setup')}>NEW SETUP</Button>
                       </div>
-                    ) : (
-                      <div>
-                        {outcome === 'civilians' && <ConfettiBurst />}
-                        <h2 className={`font-display text-4xl font-black mb-2 ${outcome === 'civilians' ? 'text-green-400' : 'text-purple-300'}`}>
-                          {outcome === 'civilians' ? 'PAKDA GAYA! 🎉' : 'BACH GAYA! 😈'}
-                        </h2>
-                        <p className="font-bold text-slate-200 mb-5">Session score — Civilians {score.civilians} : {score.imposters} Imposters</p>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                          <Button size="lg" onClick={rematch}>REMATCH · EK AUR!</Button>
-                          <Button size="lg" variant="outline" className="border-slate-500 text-slate-200" onClick={() => setStage('setup')}>NEW SETUP</Button>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </motion.div>
