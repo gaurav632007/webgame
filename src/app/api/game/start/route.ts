@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sealRoundSecret } from '@/lib/game/secret';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: startResult?.error || 'Failed to start game' }, { status: 400 });
     }
 
+    await sealRoundSecret(supabase, roomId);
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {

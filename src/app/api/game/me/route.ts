@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { decryptSecret } from '@/lib/game/secret';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -27,7 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to load role' }, { status: 500 });
     }
 
-    return NextResponse.json(data as { role: string | null; secret: string | null });
+    const view = data as { role: string | null; secret: string | null };
+    return NextResponse.json({ role: view.role, secret: decryptSecret(view.secret) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { decryptSecret } from '@/lib/game/secret';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      secret: state.secret,
+      secret: decryptSecret(state.secret),
       winner: state.winner,
       phase: state.phase,
       round: state.round,

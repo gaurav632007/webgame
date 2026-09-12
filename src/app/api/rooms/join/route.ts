@@ -23,23 +23,42 @@ export async function POST(request: NextRequest) {
       playerId = crypto.randomUUID();
     }
 
-    // Call the database function to join room
-    const { data: result, error } = await supabase.rpc('join_room', {
-      p_room_code: data.code,
-      p_player_id: playerId,
-      p_nickname: data.nickname,
-      p_avatar_id: data.avatarId,
-    });
-
-    if (error) {
-      console.error('Join room error:', error);
-      return NextResponse.json({ error: 'Failed to join room' }, { status: 500 });
+    // Join logic lives here (not in the join_room RPC): validate the room,
+    // capacity, and nickname, then insert the player row directly.
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('id, status, max_players')
+      .eq('code', data.code)
+      .single();
+    const roomRow = room as unknown as { id: string; status: string; max_players: number } | null;
+    if (roomError || !roomRow) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 400 });
+    }
+    if (roomRow.status !== 'waiting') {
+      return NextResponse.json({ error: 'Game already started' }, { status: 400 });
     }
 
-    const joinResult = result[0] as { success: boolean; error: string | null; player_id: string; room_id?: string };
+    const { data: existing } = await supabase.from('players').select('id, nickname').eq('room_id', roomRow.id);
+    const roster = (existing ?? []) as Array<{ id: string; nickname: string }>;
+    if (roster.length >= roomRow.max_players) {
+      return NextResponse.json({ error: 'Room is full' }, { status: 400 });
+    }
+    if (roster.some((p) => p.nickname.toLowerCase() === data.nickname.toLowerCase())) {
+      return NextResponse.json({ error: 'Nickname already taken' }, { status: 400 });
+    }
 
-    if (!joinResult.success) {
-      return NextResponse.json({ error: joinResult.error }, { status: 400 });
+    const joinResult = { success: true as const, player_id: playerId, room_id: roomRow.id };
+    const { error: insertError } = await supabase.from('players').insert({
+      id: playerId,
+      room_id: roomRow.id,
+      nickname: data.nickname,
+      avatar_id: data.avatarId,
+      is_host: false,
+      role: 'spectator',
+    });
+    if (insertError) {
+      console.error('Join room error:', insertError);
+      return NextResponse.json({ error: 'Failed to join room' }, { status: 500 });
     }
 
     // Prefer the room_id from join_room; fall back to a lookup for older deployments.

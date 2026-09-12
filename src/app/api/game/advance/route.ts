@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sealRoundSecret } from '@/lib/game/secret';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: adv?.error || 'Cannot advance yet', phase: adv?.phase }, { status: 400 });
     }
 
+    // A fresh round writes a fresh plaintext secret — seal it immediately.
+    if (adv.phase === 'role_reveal') {
+      await sealRoundSecret(supabase, roomId);
+    }
     return NextResponse.json({ success: true, phase: adv.phase });
   } catch (error) {
     if (error instanceof z.ZodError) {
