@@ -89,18 +89,20 @@
 
 ## 🟥 PHASE 4 — LOBBY
 
-- [ ] Player list with avatars and nicknames
-- [ ] Host indicator (crown)
-- [ ] Avatar picker for players
-- [ ] Nickname editing (pre-game only)
-- [ ] Room code display with copy/share
-- [ ] Host controls (start, kick, settings)
-- [ ] Settings modal (players, rounds, mode, difficulty)
-- [ ] Realtime player join/leave animations
-- [ ] Host transfer on disconnect
-- [ ] Lobby animations (stagger-in, ready pulse)
-- [ ] Git commit
-- [ ] Git push
+- [x] Player list with avatars and nicknames
+- [x] Host indicator (HOST badge)
+- [x] Avatar picker for players ("Edit Me" panel)
+- [x] Nickname editing pre-game (with uniqueness check)
+- [x] Room code display with copy/share
+- [x] Host controls (start, kick, settings)
+- [x] Settings modal (players, rounds, mode, difficulty)
+- [x] Realtime player join/leave animations (pop-in + exit shrink)
+- [x] Host transfer on leave (leave API promotes longest-waiting player; beacon on tab close; last-out closes room)
+- [x] Kicked/removed redirect + room-closed redirect
+- [x] Lobby animations (stagger-in, ready pulse on START when 4+ players)
+- [x] Lint clean + production build green (14 routes incl. leave API)
+- [x] Git commit
+- [x] Git push
 
 ## 🟪 PHASE 5 — GAME ENGINE
 
